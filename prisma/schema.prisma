@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Merchant {
+  id                String             @id @default(uuid()) @db.Uuid
+  name              String             @db.VarChar(255)
+  email             String             @unique @db.VarChar(255)
+  apiKeyHash        String             @unique @map("api_key_hash") @db.VarChar(255)
+  defaultFeePercent Decimal            @default(2.50) @map("default_fee_percent") @db.Decimal(5, 2)
+  isActive          Boolean            @default(true) @map("is_active")
+  stripeAccountId   String?            @map("stripe_account_id") @db.VarChar(255)
+  webhookUrl        String?            @map("webhook_url") @db.VarChar(500)
+  webhookSecret     String?            @map("webhook_secret") @db.VarChar(255)
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  payments          Payment[]
+  fees              Fee[]
+  webhookDeliveries WebhookDelivery[]
+
+  @@index([apiKeyHash])
+  @@map("merchants")
+}
+
+model Payment {
+  id                String            @id @default(uuid()) @db.Uuid
+  merchantId        String            @map("merchant_id") @db.Uuid
+  orderId           String            @map("order_id") @db.VarChar(255)
+  stripeSessionId   String?           @map("stripe_session_id") @db.VarChar(255)
+  stripeIntentId    String?           @map("stripe_intent_id") @db.VarChar(255)
+  amount            Int
+  currency          String            @default("usd") @db.VarChar(10)
+  status            PaymentStatus     @default(PENDING)
+  type              PaymentType
+  metadata          Json?
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  merchant          Merchant          @relation(fields: [merchantId], references: [id])
+  fees              Fee[]
+  webhookDeliveries WebhookDelivery[]
+
+  @@unique([merchantId, orderId])
+  @@index([merchantId])
+  @@index([stripeSessionId])
+  @@index([stripeIntentId])
+  @@index([status])
+  @@map("payments")
+}
+
+model Fee {
+  id         String   @id @default(uuid()) @db.Uuid
+  paymentId  String   @map("payment_id") @db.Uuid
+  merchantId String   @map("merchant_id") @db.Uuid
+  feeAmount  Int      @map("fee_amount")
+  feePercent Decimal  @map("fee_percent") @db.Decimal(5, 2)
+  currency   String   @default("usd") @db.VarChar(10)
+  createdAt  DateTime @default(now()) @map("created_at")
+  payment    Payment  @relation(fields: [paymentId], references: [id])
+  merchant   Merchant @relation(fields: [merchantId], references: [id])
+
+  @@map("fees")
+}
+
+model WebhookEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  stripeEventId String   @unique @map("stripe_event_id") @db.VarChar(255)
+  eventType     String   @map("event_type") @db.VarChar(100)
+  payload       Json
+  processedAt   DateTime @default(now()) @map("processed_at")
+
+  @@index([processedAt])
+  @@map("webhook_events")
+}
+
+model WebhookDelivery {
+  id           String                @id @default(uuid()) @db.Uuid
+  merchantId   String                @map("merchant_id") @db.Uuid
+  paymentId    String                @map("payment_id") @db.Uuid
+  eventType    String                @map("event_type") @db.VarChar(100)
+  payload      Json
+  status       WebhookDeliveryStatus @default(PENDING)
+  attempts     Int                   @default(0)
+  lastAttempt  DateTime?             @map("last_attempt")
+  nextRetry    DateTime?             @map("next_retry")
+  responseCode Int?                  @map("response_code")
+  errorMessage String?               @map("error_message") @db.Text
+  createdAt    DateTime              @default(now()) @map("created_at")
+  deliveredAt  DateTime?             @map("delivered_at")
+  merchant     Merchant              @relation(fields: [merchantId], references: [id])
+  payment      Payment               @relation(fields: [paymentId], references: [id])
+
+  @@index([merchantId])
+  @@index([paymentId])
+  @@index([status, nextRetry])
+  @@map("webhook_deliveries")
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED
+
+  @@map("webhook_delivery_status")
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+  EXPIRED
+  DISPUTED
+
+  @@map("payment_status")
+}
+
+enum PaymentType {
+  CHECKOUT
+  INTENT
+
+  @@map("payment_type")
+}

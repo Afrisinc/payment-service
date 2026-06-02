@@ -1,0 +1,118 @@
+name: Build & Deploy Monolithic Service to Staging
+
+on:
+  push:
+    branches:
+      - release
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: afrisinc-notification-service
+
+jobs:
+  # Run tests and linting
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22' 
+          
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Generate Prisma Client
+        run: pnpm db:generate
+
+      - name: Lint code
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm type-check
+
+  # Build and push single monolithic image
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GHCR_OWNER }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ secrets.GHCR_OWNER }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=staging
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ secrets.GHCR_OWNER }}/${{ env.IMAGE_NAME }}:buildcache,ignore-error=true
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ secrets.GHCR_OWNER }}/${{ env.IMAGE_NAME }}:buildcache,mode=max,ignore-error=true
+
+  # Deploy to VPS after build succeeds
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/release')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          timeout: 30s
+          command_timeout: 10m
+          script: |
+            set -e
+            APP_PATH="${{ secrets.VPS_APP_PATH }}/notification-service/staging"
+            cd $APP_PATH
+            echo "Pulling latest image..."
+            docker compose -p notification-staging --env-file .env.staging -f docker-compose.yml pull
+            docker compose -p notification-staging --env-file .env.staging -f docker-compose.yml up -d
+            docker image prune -af
+            docker compose -p notification-staging --env-file .env.staging -f docker-compose.yml ps

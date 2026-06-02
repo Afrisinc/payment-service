@@ -1,0 +1,39 @@
+services:
+  afrisinc-pay:
+    build: .
+    container_name: afrisinc_pay
+    restart: unless-stopped
+    ports:
+      - "3400:3400"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - afrisinc_net
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: afrisinc_pay_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: afrisinc_pay_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pay_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d afrisinc_pay_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - afrisinc_net
+
+volumes:
+  pay_postgres_data:
+
+networks:
+  afrisinc_net:
+    external: true
