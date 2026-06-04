@@ -23,6 +23,6 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 
-EXPOSE 3400
+EXPOSE 8013
 
 CMD ["node", "dist/app.js"]
