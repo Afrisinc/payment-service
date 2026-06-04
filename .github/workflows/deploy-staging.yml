@@ -112,7 +112,6 @@ jobs:
             APP_PATH="${{ secrets.VPS_APP_PATH }}/notification-service/staging"
             cd $APP_PATH
             echo "Pulling latest image..."
-            docker compose -p notification-staging --env-file .env.staging -f docker-compose.yml pull
-            docker compose -p notification-staging --env-file .env.staging -f docker-compose.yml up -d
+            docker compose pull
+            docker compose up -d
             docker image prune -af
-            docker compose -p notification-staging --env-file .env.staging -f docker-compose.yml ps
