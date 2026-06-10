@@ -1,5 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { merchantService } from '../services/index.js';
+import { ResponseHandler } from '../utils/response-handler.js';
 import type { CreateMerchantBody, MerchantParams, ConfigureWebhookBody } from '../types/index.js';
 
 export class MerchantController {
@@ -10,20 +11,24 @@ export class MerchantController {
       email,
       defaultFeePercent,
     });
-    await reply.status(201).send({
-      id: merchant.id,
-      name: merchant.name,
-      email: merchant.email,
-      defaultFeePercent: merchant.defaultFeePercent,
-      isActive: merchant.isActive,
-      createdAt: merchant.createdAt,
-      apiKey,
-    });
+    await ResponseHandler.created(
+      reply,
+      {
+        id: merchant.id,
+        name: merchant.name,
+        email: merchant.email,
+        defaultFeePercent: merchant.defaultFeePercent,
+        isActive: merchant.isActive,
+        createdAt: merchant.createdAt,
+        apiKey,
+      },
+      'Merchant created successfully',
+    );
   }
 
   async getMerchant(request: FastifyRequest<{ Params: MerchantParams }>, reply: FastifyReply): Promise<void> {
     const merchant = await merchantService.getMerchant(request.params.id);
-    await reply.send({
+    await ResponseHandler.success(reply, {
       id: merchant.id,
       name: merchant.name,
       email: merchant.email,
@@ -36,17 +41,17 @@ export class MerchantController {
 
   async rotateApiKey(request: FastifyRequest<{ Params: MerchantParams }>, reply: FastifyReply): Promise<void> {
     const { apiKey } = await merchantService.rotateApiKey(request.params.id);
-    await reply.send({ apiKey });
+    await ResponseHandler.success(reply, { apiKey }, 'API key rotated successfully');
   }
 
   async deactivateMerchant(request: FastifyRequest<{ Params: MerchantParams }>, reply: FastifyReply): Promise<void> {
     await merchantService.setActive(request.params.id, false);
-    await reply.status(204).send();
+    await ResponseHandler.noContent(reply);
   }
 
   async activateMerchant(request: FastifyRequest<{ Params: MerchantParams }>, reply: FastifyReply): Promise<void> {
     await merchantService.setActive(request.params.id, true);
-    await reply.status(204).send();
+    await ResponseHandler.noContent(reply);
   }
 
   async configureWebhook(
@@ -56,17 +61,17 @@ export class MerchantController {
     const result = await merchantService.configureWebhook(request.params.id, {
       webhookUrl: request.body.webhookUrl,
     });
-    await reply.send(result);
+    await ResponseHandler.success(reply, result, 'Webhook configured successfully');
   }
 
   async getWebhookConfig(request: FastifyRequest<{ Params: MerchantParams }>, reply: FastifyReply): Promise<void> {
     const config = await merchantService.getWebhookConfig(request.params.id);
-    await reply.send(config);
+    await ResponseHandler.success(reply, config);
   }
 
   async removeWebhook(request: FastifyRequest<{ Params: MerchantParams }>, reply: FastifyReply): Promise<void> {
     await merchantService.removeWebhook(request.params.id);
-    await reply.status(204).send();
+    await ResponseHandler.noContent(reply);
   }
 }
 

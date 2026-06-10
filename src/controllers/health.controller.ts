@@ -1,24 +1,23 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/prisma.js';
 import { env } from '../config/env.js';
+import { ResponseHandler } from '../utils/response-handler.js';
 
 export class HealthController {
   async check(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
     try {
       await prisma.$queryRaw`SELECT 1`;
-      await reply.send({
-        service: 'afrisinc-pay',
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        env: env.NODE_ENV,
-      });
+      await ResponseHandler.success(
+        reply,
+        {
+          service: 'afrisinc-pay',
+          status: 'healthy',
+          env: env.NODE_ENV,
+        },
+        'Service is healthy',
+      );
     } catch {
-      await reply.status(503).send({
-        service: 'afrisinc-pay',
-        status: 'unhealthy',
-        timestamp: new Date().toISOString(),
-        env: env.NODE_ENV,
-      });
+      await ResponseHandler.serviceUnavailable(reply, 'Database connection failed');
     }
   }
 }

@@ -1,6 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { PaymentStatus } from '@prisma/client';
 import { paymentService } from '../services/index.js';
+import { ResponseHandler } from '../utils/response-handler.js';
 import type {
   CreateCheckoutBody,
   CreateIntentBody,
@@ -24,7 +25,7 @@ export class PaymentController {
       successUrl,
       cancelUrl,
     });
-    await reply.status(result.idempotent ? 200 : 201).send(result);
+    await ResponseHandler.idempotent(reply, result, 'Checkout session created');
   }
 
   async createIntent(request: FastifyRequest<{ Body: CreateIntentBody }>, reply: FastifyReply): Promise<void> {
@@ -37,7 +38,7 @@ export class PaymentController {
       customerEmail,
       metadata,
     });
-    await reply.status(result.idempotent ? 200 : 201).send(result);
+    await ResponseHandler.idempotent(reply, result, 'Payment intent created');
   }
 
   async listPayments(request: FastifyRequest<{ Querystring: ListPaymentsQuery }>, reply: FastifyReply): Promise<void> {
@@ -46,27 +47,21 @@ export class PaymentController {
     const status = request.query.status;
 
     if (status && !Object.values(PaymentStatus).includes(status)) {
-      await reply.status(400).send({ error: `Invalid status: ${status}` });
+      await ResponseHandler.validationError(reply, `Invalid status: ${status}`);
       return;
     }
 
     const result = await paymentService.listPayments(request.merchant.id, page, limit, status);
-    await reply.send({
-      items: result.items,
-      total: result.total,
-      page,
-      limit,
-      pages: Math.ceil(result.total / limit),
-    });
+    await ResponseHandler.paginated(reply, result.items, result.total, page, limit);
   }
 
   async getPayment(request: FastifyRequest<{ Params: PaymentParams }>, reply: FastifyReply): Promise<void> {
     const payment = await paymentService.getPayment(request.params.id, request.merchant.id);
     if (!payment) {
-      await reply.status(404).send({ error: 'Payment not found' });
+      await ResponseHandler.notFound(reply, 'Payment not found');
       return;
     }
-    await reply.send(payment);
+    await ResponseHandler.success(reply, payment);
   }
 
   async refundPayment(
@@ -75,7 +70,7 @@ export class PaymentController {
   ): Promise<void> {
     const payment = await paymentService.getPayment(request.params.id, request.merchant.id);
     if (!payment) {
-      await reply.status(404).send({ error: 'Payment not found' });
+      await ResponseHandler.notFound(reply, 'Payment not found');
       return;
     }
     const result = await paymentService.refundPayment({
@@ -83,7 +78,7 @@ export class PaymentController {
       amount: request.body.amount,
       reason: request.body.reason,
     });
-    await reply.send(result);
+    await ResponseHandler.success(reply, result, 'Payment refunded successfully');
   }
 }
 

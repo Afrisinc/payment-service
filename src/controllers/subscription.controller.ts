@@ -1,6 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { setupSubscriptionService } from '../services/setup-subscription.service.js';
 import { logger } from '../lib/logger.js';
+import { ResponseHandler } from '../utils/response-handler.js';
 
 export class SubscriptionController {
   /**
@@ -18,7 +19,7 @@ export class SubscriptionController {
     const { email, name } = request.body;
 
     if (!email?.trim()) {
-      await reply.status(400).send({ error: 'email is required' });
+      await ResponseHandler.validationError(reply, 'email is required');
       return;
     }
 
@@ -26,7 +27,7 @@ export class SubscriptionController {
     const result = await setupSubscriptionService.createSetupIntent(customerId);
 
     logger.info({ customerId: result.customerId, setupIntentId: result.setupIntentId }, 'Setup intent created');
-    await reply.status(201).send(result);
+    await ResponseHandler.created(reply, result, 'Setup intent created successfully');
   }
 
   /**
@@ -57,12 +58,15 @@ export class SubscriptionController {
     const { customerId, paymentMethodId, amountCents, currency, trialDays, metadata } = request.body;
 
     if (!customerId || !paymentMethodId || !amountCents || !currency) {
-      await reply.status(400).send({ error: 'customerId, paymentMethodId, amountCents, and currency are required' });
+      await ResponseHandler.validationError(
+        reply,
+        'customerId, paymentMethodId, amountCents, and currency are required',
+      );
       return;
     }
 
     if (amountCents <= 0) {
-      await reply.status(400).send({ error: 'amountCents must be positive' });
+      await ResponseHandler.validationError(reply, 'amountCents must be positive');
       return;
     }
 
@@ -79,7 +83,7 @@ export class SubscriptionController {
       { subscriptionId: result.subscriptionId, customerId, status: result.status },
       'Stripe subscription created via API',
     );
-    await reply.status(201).send(result);
+    await ResponseHandler.created(reply, result, 'Subscription created successfully');
   }
 }
 
