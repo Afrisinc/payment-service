@@ -113,7 +113,7 @@ jobs:
           command_timeout: 10m
           script: |
             set -e
-            APP_PATH="${{ secrets.VPS_APP_PATH }}/notification-service/production"
+            APP_PATH="${{ secrets.VPS_APP_PATH }}/notification-service/prod"
             cd $APP_PATH
             echo "Pulling latest image..."
             docker compose pull
