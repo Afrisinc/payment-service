@@ -41,3 +41,31 @@ export type {
 
 // Merchant Domain Types
 export type { CreateMerchantParams, CreateMerchantResult, RotateApiKeyResult, CreateMerchantData } from './merchant.js';
+
+// Mobile Payment Domain Types
+export type {
+  CashinParams,
+  CashoutParams,
+  CashinRequestParams,
+  CashoutRequestParams,
+  MobilePaymentResult,
+  MobilePaymentPage,
+  MobilePaymentRecord,
+  MobilePaymentWithMerchant,
+  TransactionStatusResult,
+  AccountBalanceResult,
+} from './mobile-payment.js';
+
+// Paypack API Types
+export type {
+  PaypackConfig,
+  PaypackAuthResponse,
+  PaypackTransactionRequest,
+  PaypackTransactionResponse,
+  PaypackTransactionDetails,
+  PaypackAccountInfo,
+  PaypackEventData,
+  PaypackEvent,
+  PaypackEventsResponse,
+  PaypackEventsQuery,
+} from './paypack.js';

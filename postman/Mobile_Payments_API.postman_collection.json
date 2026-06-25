@@ -1,0 +1,688 @@
+{
+  "info": {
+    "name": "Afrisinc Pay - Mobile Payments API",
+    "description": "Collection for testing Mobile Money payments via Paypack integration.\n\n## Setup\n1. Set `base_url` variable to your API URL\n2. Set `api_key` variable to your merchant API key\n3. For local testing: `http://localhost:3400`\n\n## Test Flow\n1. Start with Cashin to initiate a payment\n2. Use the returned `id` or `ref` to check status\n3. Use List Payments to see all transactions",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3400",
+      "type": "string"
+    },
+    {
+      "key": "api_key",
+      "value": "YOUR_MERCHANT_API_KEY",
+      "type": "string"
+    },
+    {
+      "key": "payment_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "payment_ref",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Transactions",
+      "description": "Cashin and Cashout operations",
+      "item": [
+        {
+          "name": "Cashin - Collect Payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data) {",
+                  "        pm.collectionVariables.set('payment_id', jsonData.data.id);",
+                  "        pm.collectionVariables.set('payment_ref', jsonData.data.ref);",
+                  "        console.log('Saved payment_id:', jsonData.data.id);",
+                  "        console.log('Saved payment_ref:', jsonData.data.ref);",
+                  "    }",
+                  "}",
+                  "",
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has success true', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test('Response has payment data', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('id');",
+                  "    pm.expect(jsonData.data).to.have.property('ref');",
+                  "    pm.expect(jsonData.data).to.have.property('status');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"ORDER-{{$timestamp}}\",\n  \"amount\": 1000,\n  \"phoneNumber\": \"0780478387\",\n  \"customerName\": \"Test Customer\",\n  \"description\": \"Test cashin payment\",\n  \"metadata\": {\n    \"source\": \"postman_test\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/cashin",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "cashin"]
+            },
+            "description": "Initiate a cashin (collect payment from customer's mobile money account).\n\n**Required Fields:**\n- `orderId`: Your unique order identifier\n- `amount`: Amount in RWF (minimum 1)\n- `phoneNumber`: Customer phone number\n\n**Optional Fields:**\n- `customerName`: Customer name for reference\n- `description`: Payment description\n- `metadata`: Additional custom data"
+          }
+        },
+        {
+          "name": "Cashout - Send Payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data) {",
+                  "        pm.collectionVariables.set('payment_id', jsonData.data.id);",
+                  "        pm.collectionVariables.set('payment_ref', jsonData.data.ref);",
+                  "    }",
+                  "}",
+                  "",
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has success true', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test('Payment type is CASHOUT', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.type).to.eql('CASHOUT');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"PAYOUT-{{$timestamp}}\",\n  \"amount\": 500,\n  \"phoneNumber\": \"0780478387\",\n  \"recipientName\": \"Test Recipient\",\n  \"description\": \"Test cashout payment\",\n  \"metadata\": {\n    \"source\": \"postman_test\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/cashout",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "cashout"]
+            },
+            "description": "Initiate a cashout (send payment to recipient's mobile money account).\n\n**Required Fields:**\n- `orderId`: Your unique order identifier\n- `amount`: Amount in RWF (minimum 1)\n- `phoneNumber`: Recipient phone number\n\n**Optional Fields:**\n- `recipientName`: Recipient name for reference\n- `description`: Payment description\n- `metadata`: Additional custom data"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "description": "Retrieve payment information",
+      "item": [
+        {
+          "name": "List Payments",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has pagination', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('pagination');",
+                  "});",
+                  "",
+                  "pm.test('Response data is array', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["mobile"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Items per page (default: 20, max: 100)"
+                },
+                {
+                  "key": "status",
+                  "value": "SUCCESSFUL",
+                  "description": "Filter by status: PENDING, PROCESSING, SUCCESSFUL, FAILED",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "CASHIN",
+                  "description": "Filter by type: CASHIN, CASHOUT",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Retrieve a paginated list of all mobile payments for your merchant account.\n\n**Query Parameters:**\n- `page`: Page number (default: 1)\n- `limit`: Items per page (default: 20, max: 100)\n- `status`: Filter by status (PENDING, PROCESSING, SUCCESSFUL, FAILED)\n- `type`: Filter by type (CASHIN, CASHOUT)"
+          }
+        },
+        {
+          "name": "List Payments - Filter by Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile?status=PENDING",
+              "host": ["{{base_url}}"],
+              "path": ["mobile"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                }
+              ]
+            },
+            "description": "List payments filtered by PENDING status"
+          }
+        },
+        {
+          "name": "List Payments - Filter by Type",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile?type=CASHIN",
+              "host": ["{{base_url}}"],
+              "path": ["mobile"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "CASHIN"
+                }
+              ]
+            },
+            "description": "List payments filtered by CASHIN type"
+          }
+        },
+        {
+          "name": "Get Payment by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has payment data', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('id');",
+                  "    pm.expect(jsonData.data).to.have.property('ref');",
+                  "    pm.expect(jsonData.data).to.have.property('amount');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile/{{payment_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "{{payment_id}}"]
+            },
+            "description": "Retrieve details of a specific payment by its internal ID.\n\n**Note:** Run a Cashin or Cashout request first to populate the `payment_id` variable."
+          }
+        },
+        {
+          "name": "Get Payment by Reference",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has payment data', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('ref');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile/ref/{{payment_ref}}",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "ref", "{{payment_ref}}"]
+            },
+            "description": "Retrieve details of a specific payment by its Paypack transaction reference.\n\n**Note:** Run a Cashin or Cashout request first to populate the `payment_ref` variable."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Account",
+      "description": "Account information and balance",
+      "item": [
+        {
+          "name": "Get Account Info",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has balance info', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('balance');",
+                  "    pm.expect(jsonData.data).to.have.property('currency');",
+                  "    pm.expect(jsonData.data).to.have.property('merchantName');",
+                  "    pm.expect(jsonData.data).to.have.property('inRate');",
+                  "    pm.expect(jsonData.data).to.have.property('outRate');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile/account/info",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "account", "info"]
+            },
+            "description": "Retrieve your Paypack account balance and rate information.\n\n**Response Fields:**\n- `balance`: Current account balance in RWF\n- `currency`: Currency code (always \"RWF\")\n- `merchantName`: Paypack account name\n- `inRate`: Cashin fee percentage\n- `outRate`: Cashout fee percentage"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "description": "Webhook endpoints for Paypack callbacks",
+      "item": [
+        {
+          "name": "Paypack Webhook - Transaction Processed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response acknowledges webhook', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Paypack-Signature",
+                "value": "test-signature",
+                "description": "HMAC-SHA256 signature for verification"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_id\": \"9346978a-40c0-11ed-84d0-dead0b5d6103\",\n  \"event_kind\": \"transaction:processed\",\n  \"created_at\": \"2024-01-15T10:31:15.000Z\",\n  \"data\": {\n    \"ref\": \"{{payment_ref}}\",\n    \"kind\": \"CASHIN\",\n    \"fee\": 115,\n    \"merchant\": \"MERCHANT_ID\",\n    \"client\": \"0781234567\",\n    \"amount\": 5000,\n    \"provider\": \"mtn\",\n    \"status\": \"successful\",\n    \"created_at\": \"2024-01-15T10:30:00.000Z\",\n    \"processed_at\": \"2024-01-15T10:31:15.000Z\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/webhooks/mobile/paypack",
+              "host": ["{{base_url}}"],
+              "path": ["webhooks", "mobile", "paypack"]
+            },
+            "description": "Simulate a Paypack webhook callback for a successful transaction.\n\n**Note:** In production, this endpoint receives callbacks from Paypack. The signature header is used for verification."
+          }
+        },
+        {
+          "name": "Paypack Webhook - Transaction Failed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Paypack-Signature",
+                "value": "test-signature"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_id\": \"9346978a-40c0-11ed-84d0-dead0b5d6104\",\n  \"event_kind\": \"transaction:processed\",\n  \"created_at\": \"2024-01-15T10:31:15.000Z\",\n  \"data\": {\n    \"ref\": \"{{payment_ref}}\",\n    \"kind\": \"CASHIN\",\n    \"fee\": 0,\n    \"merchant\": \"MERCHANT_ID\",\n    \"client\": \"0781234567\",\n    \"amount\": 5000,\n    \"provider\": \"mtn\",\n    \"status\": \"failed\",\n    \"created_at\": \"2024-01-15T10:30:00.000Z\",\n    \"processed_at\": \"2024-01-15T10:31:15.000Z\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/webhooks/mobile/paypack",
+              "host": ["{{base_url}}"],
+              "path": ["webhooks", "mobile", "paypack"]
+            },
+            "description": "Simulate a Paypack webhook callback for a failed transaction."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Direct Paypack API",
+      "description": "Direct calls to Paypack API (for reference/debugging)",
+      "item": [
+        {
+          "name": "Paypack - Authenticate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('paypack_access_token', jsonData.access);",
+                  "    pm.collectionVariables.set('paypack_refresh_token', jsonData.refresh);",
+                  "    console.log('Access token saved');",
+                  "}",
+                  "",
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has tokens', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('access');",
+                  "    pm.expect(jsonData).to.have.property('refresh');",
+                  "    pm.expect(jsonData).to.have.property('expires');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{paypack_client_id}}\",\n  \"client_secret\": \"{{paypack_client_secret}}\"\n}"
+            },
+            "url": {
+              "raw": "https://payments.paypack.rw/api/auth/agents/authorize",
+              "protocol": "https",
+              "host": ["payments", "paypack", "rw"],
+              "path": ["api", "auth", "agents", "authorize"]
+            },
+            "description": "Authenticate directly with Paypack to get access and refresh tokens.\n\n**Variables needed:**\n- `paypack_client_id`: Your Paypack client ID\n- `paypack_client_secret`: Your Paypack client secret"
+          }
+        },
+        {
+          "name": "Paypack - Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('paypack_access_token', jsonData.access);",
+                  "    pm.collectionVariables.set('paypack_refresh_token', jsonData.refresh);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://payments.paypack.rw/api/auth/agents/refresh/{{paypack_refresh_token}}",
+              "protocol": "https",
+              "host": ["payments", "paypack", "rw"],
+              "path": ["api", "auth", "agents", "refresh", "{{paypack_refresh_token}}"]
+            },
+            "description": "Refresh an expired Paypack access token."
+          }
+        },
+        {
+          "name": "Paypack - Cashin Direct",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{paypack_access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000,\n  \"number\": \"0780478387\"\n}"
+            },
+            "url": {
+              "raw": "https://payments.paypack.rw/api/transactions/cashin",
+              "protocol": "https",
+              "host": ["payments", "paypack", "rw"],
+              "path": ["api", "transactions", "cashin"]
+            },
+            "description": "Direct cashin call to Paypack API.\n\n**Note:** Run 'Paypack - Authenticate' first to get the access token."
+          }
+        },
+        {
+          "name": "Paypack - Cashout Direct",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{paypack_access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500,\n  \"number\": \"0780478387\"\n}"
+            },
+            "url": {
+              "raw": "https://payments.paypack.rw/api/transactions/cashout",
+              "protocol": "https",
+              "host": ["payments", "paypack", "rw"],
+              "path": ["api", "transactions", "cashout"]
+            },
+            "description": "Direct cashout call to Paypack API."
+          }
+        },
+        {
+          "name": "Paypack - Find Transaction",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{paypack_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "https://payments.paypack.rw/api/transactions/find/{{payment_ref}}",
+              "protocol": "https",
+              "host": ["payments", "paypack", "rw"],
+              "path": ["api", "transactions", "find", "{{payment_ref}}"]
+            },
+            "description": "Find a transaction by reference directly from Paypack."
+          }
+        },
+        {
+          "name": "Paypack - Get Account Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{paypack_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "https://payments.paypack.rw/api/merchants/me",
+              "protocol": "https",
+              "host": ["payments", "paypack", "rw"],
+              "path": ["api", "merchants", "me"]
+            },
+            "description": "Get account information directly from Paypack."
+          }
+        },
+        {
+          "name": "Paypack - List Events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{paypack_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "https://payments.paypack.rw/api/events/transactions?limit=10",
+              "protocol": "https",
+              "host": ["payments", "paypack", "rw"],
+              "path": ["api", "events", "transactions"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "disabled": true
+                },
+                {
+                  "key": "kind",
+                  "value": "CASHIN",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "successful",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List transaction events directly from Paypack."
+          }
+        }
+      ]
+    }
+  ]
+}

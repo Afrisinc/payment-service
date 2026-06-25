@@ -64,6 +64,10 @@ async function buildApp() {
       openapi: {
         info: { title: 'Afrisinc Pay API', description: 'Payment Gateway API', version: '1.0.0' },
         servers,
+        tags: [
+          { name: 'Mobile Payments', description: 'Mobile Money payment operations (Cashin/Cashout)' },
+          { name: 'Webhooks', description: 'Webhook endpoints for payment providers' },
+        ],
         components: {
           securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer' } },
         },

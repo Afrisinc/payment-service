@@ -11,6 +11,12 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string().min(1),
   STRIPE_WEBHOOK_SECRET: z.string().min(1),
 
+  // Paypack Mobile Money
+  PAYPACK_CLIENT_ID: z.string().min(1),
+  PAYPACK_CLIENT_SECRET: z.string().min(1),
+  PAYPACK_WEBHOOK_SECRET: z.string().optional(),
+  PAYPACK_API_BASE_URL: z.string().url().default('https://payments.paypack.rw'),
+
   FRONTEND_URL: z.string().url().default('https://afrisinc.com'),
 
   ENABLE_SWAGGER: z
@@ -32,4 +38,4 @@ if (!parsed.success) {
   process.exit(1);
 }
 
-export const env = parsed.data;
+export const env: z.infer<typeof envSchema> = parsed.data;

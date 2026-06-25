@@ -8,20 +8,21 @@ datasource db {
 }
 
 model Merchant {
-  id                String             @id @default(uuid()) @db.Uuid
-  name              String             @db.VarChar(255)
-  email             String             @unique @db.VarChar(255)
-  apiKeyHash        String             @unique @map("api_key_hash") @db.VarChar(255)
-  defaultFeePercent Decimal            @default(2.50) @map("default_fee_percent") @db.Decimal(5, 2)
-  isActive          Boolean            @default(true) @map("is_active")
-  stripeAccountId   String?            @map("stripe_account_id") @db.VarChar(255)
-  webhookUrl        String?            @map("webhook_url") @db.VarChar(500)
-  webhookSecret     String?            @map("webhook_secret") @db.VarChar(255)
-  createdAt         DateTime           @default(now()) @map("created_at")
-  updatedAt         DateTime           @updatedAt @map("updated_at")
+  id                String              @id @default(uuid()) @db.Uuid
+  name              String              @db.VarChar(255)
+  email             String              @unique @db.VarChar(255)
+  apiKeyHash        String              @unique @map("api_key_hash") @db.VarChar(255)
+  defaultFeePercent Decimal             @default(2.50) @map("default_fee_percent") @db.Decimal(5, 2)
+  isActive          Boolean             @default(true) @map("is_active")
+  stripeAccountId   String?             @map("stripe_account_id") @db.VarChar(255)
+  webhookUrl        String?             @map("webhook_url") @db.VarChar(500)
+  webhookSecret     String?             @map("webhook_secret") @db.VarChar(255)
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
   payments          Payment[]
   fees              Fee[]
   webhookDeliveries WebhookDelivery[]
+  mobilePayments    MobilePayment[]
 
   @@index([apiKeyHash])
   @@map("merchants")
@@ -125,4 +126,66 @@ enum PaymentType {
   INTENT
 
   @@map("payment_type")
+}
+
+// ============================================================================
+// Mobile Money Payments (Paypack)
+// ============================================================================
+
+model MobilePayment {
+  id            String              @id @default(uuid()) @db.Uuid
+  merchantId    String              @map("merchant_id") @db.Uuid
+  orderId       String              @map("order_id") @db.VarChar(255)
+  ref           String              @unique @db.VarChar(255) // Paypack reference
+  amount        Int
+  currency      String              @default("RWF") @db.VarChar(10)
+  phoneNumber   String              @map("phone_number") @db.VarChar(20)
+  type          MobilePaymentType   @default(CASHIN)
+  status        MobilePaymentStatus @default(PENDING)
+  provider      String?             @db.VarChar(50) // mtn, airtel
+  fee           Int                 @default(0)
+  customerName  String?             @map("customer_name") @db.VarChar(255)
+  description   String?             @db.VarChar(500)
+  failureReason String?             @map("failure_reason") @db.Text
+  metadata      Json?
+  processedAt   DateTime?           @map("processed_at")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  merchant      Merchant            @relation(fields: [merchantId], references: [id])
+
+  @@unique([merchantId, orderId])
+  @@index([merchantId])
+  @@index([ref])
+  @@index([status])
+  @@index([phoneNumber])
+  @@map("mobile_payments")
+}
+
+model MobileWebhookEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  eventId     String   @unique @map("event_id") @db.VarChar(255)
+  eventType   String   @map("event_type") @db.VarChar(100)
+  ref         String   @db.VarChar(255)
+  payload     Json
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@index([ref])
+  @@index([processedAt])
+  @@map("mobile_webhook_events")
+}
+
+enum MobilePaymentType {
+  CASHIN
+  CASHOUT
+
+  @@map("mobile_payment_type")
+}
+
+enum MobilePaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCESSFUL
+  FAILED
+
+  @@map("mobile_payment_status")
 }
