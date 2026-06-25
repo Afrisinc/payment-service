@@ -41,7 +41,7 @@ export interface MobilePaymentResult {
   status: 'PENDING' | 'PROCESSING' | 'SUCCESSFUL' | 'FAILED';
   fee: number;
   provider?: string;
-  createdAt: Date;
+  createdAt: string; // ISO 8601 date-time string
 }
 
 export interface MobilePaymentPage {

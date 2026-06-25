@@ -352,7 +352,7 @@ export class MobilePaymentService {
       status: payment.status,
       fee: payment.fee,
       provider: payment.provider ?? undefined,
-      createdAt: payment.createdAt,
+      createdAt: payment.createdAt.toISOString(),
     };
   }
 }
