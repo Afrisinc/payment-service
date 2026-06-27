@@ -1,4 +1,4 @@
-name: Build & Deploy Monolithic Service Production
+name: Build & Deploy Payment Service to Production
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: afrisinc-notification-service
+  IMAGE_NAME: payment-service
 
 jobs:
   # Run tests and linting
@@ -16,32 +16,21 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'pnpm'
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
+          cache: 'yarn'
       - name: Install dependencies
-        run: pnpm install
-
+        run: yarn install --frozen-lockfile
       - name: Generate Prisma Client
-        run: pnpm db:generate
+        run: yarn db:generate
 
       - name: Lint code
-        run: pnpm lint
+        run: yarn lint
 
       - name: Type check
-        run: pnpm type-check
+        run: yarn type-check
 
   # Build and push single monolithic image
   build-and-push:
@@ -113,7 +102,7 @@ jobs:
           command_timeout: 10m
           script: |
             set -e
-            APP_PATH="${{ secrets.VPS_APP_PATH }}/notification-service/prod"
+            APP_PATH="${{ secrets.VPS_APP_PATH }}/payment-service/prod"
             cd $APP_PATH
             echo "Pulling latest image..."
             docker compose pull
