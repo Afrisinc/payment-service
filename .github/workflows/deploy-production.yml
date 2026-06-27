@@ -20,17 +20,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'yarn'
+          cache: 'npm'
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: npm ci
       - name: Generate Prisma Client
-        run: yarn db:generate
+        run: npm run db:generate
 
       - name: Lint code
-        run: yarn lint
+        run: npm run lint
 
       - name: Type check
-        run: yarn type-check
+        run: npm run type-check
 
   # Build and push single monolithic image
   build-and-push:
