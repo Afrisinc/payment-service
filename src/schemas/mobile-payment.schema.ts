@@ -29,24 +29,58 @@ const mobilePaymentResponse = {
 
 export const cashinSchema: FastifySchema = {
   tags: ['Mobile Payments'],
-  summary: 'Initiate Cashin',
-  description: 'Collect payment from a customer via Mobile Money (MTN, Airtel)',
+  summary: 'Initiate Cashin (Collect Payment)',
+  description:
+    'Request payment from a customer via Mobile Money (MTN MoMo, Airtel Money, SPENN).\n\nSample request: {"orderId":"order-12345", "amount":1000, "phoneNumber":"0798760888", "customerName":"John Doe", "description":"Payment for services"}',
   security: bearerAuth,
   body: {
     type: 'object',
     required: ['orderId', 'amount', 'phoneNumber'],
     properties: {
-      orderId: { type: 'string', minLength: 1, maxLength: 255, description: 'Your unique order identifier' },
-      amount: { type: 'integer', minimum: 1, description: 'Amount in RWF (minimum 1)' },
+      orderId: {
+        type: 'string',
+        minLength: 1,
+        maxLength: 255,
+        default: 'order-12345',
+        description: 'Unique order ID',
+      },
+      amount: {
+        type: 'integer',
+        minimum: 1,
+        default: 1000,
+        description: 'Amount in RWF (minimum 1)',
+      },
       phoneNumber: {
         type: 'string',
         minLength: 9,
         maxLength: 15,
-        description: 'Customer phone number (e.g., 0781234567)',
+        default: '0798760888',
+        description: 'Customer phone number (formats: 0798760888, +250798760888, 250798760888)',
       },
-      customerName: { type: 'string', maxLength: 255, description: 'Customer name for reference' },
-      description: { type: 'string', maxLength: 500, description: 'Payment description' },
-      metadata: { type: 'object', additionalProperties: true, description: 'Additional metadata' },
+      customerName: {
+        type: 'string',
+        maxLength: 255,
+        default: 'John Doe',
+        description: 'Customer name (optional)',
+      },
+      description: {
+        type: 'string',
+        maxLength: 500,
+        default: 'Payment for services',
+        description: 'Payment description (optional)',
+      },
+      metadata: {
+        type: 'object',
+        additionalProperties: true,
+        default: { invoiceId: 'INV-001', productId: 'PROD-123' },
+        description: 'Custom metadata object (optional)',
+      },
+      provider: {
+        type: 'string',
+        enum: ['itec', 'paypack'],
+        default: 'itec',
+        description: 'Payment provider (optional, defaults to ITEC)',
+      },
     },
   },
   response: {
@@ -56,24 +90,57 @@ export const cashinSchema: FastifySchema = {
 
 export const cashoutSchema: FastifySchema = {
   tags: ['Mobile Payments'],
-  summary: 'Initiate Cashout',
-  description: 'Send payment to a recipient via Mobile Money (MTN, Airtel)',
+  summary: 'Initiate Cashout (Send Payment)',
+  description: 'Send payment/disbursement to recipient via Mobile Money (MTN MoMo, Airtel Money, SPENN).',
   security: bearerAuth,
   body: {
     type: 'object',
     required: ['orderId', 'amount', 'phoneNumber'],
     properties: {
-      orderId: { type: 'string', minLength: 1, maxLength: 255, description: 'Your unique order identifier' },
-      amount: { type: 'integer', minimum: 1, description: 'Amount in RWF (minimum 1)' },
+      orderId: {
+        type: 'string',
+        minLength: 1,
+        maxLength: 255,
+        default: 'payout-12345',
+        description: 'Unique payout ID',
+      },
+      amount: {
+        type: 'integer',
+        minimum: 1,
+        default: 500,
+        description: 'Amount in RWF to transfer (minimum 1)',
+      },
       phoneNumber: {
         type: 'string',
         minLength: 9,
         maxLength: 15,
-        description: 'Recipient phone number (e.g., 0781234567)',
+        default: '0798760888',
+        description: 'Recipient phone number (formats: 0798760888, +250798760888, 250798760888)',
       },
-      recipientName: { type: 'string', maxLength: 255, description: 'Recipient name for reference' },
-      description: { type: 'string', maxLength: 500, description: 'Payment description' },
-      metadata: { type: 'object', additionalProperties: true, description: 'Additional metadata' },
+      recipientName: {
+        type: 'string',
+        maxLength: 255,
+        default: 'Jane Smith',
+        description: 'Recipient name (optional)',
+      },
+      description: {
+        type: 'string',
+        maxLength: 500,
+        default: 'Refund for order #123',
+        description: 'Payout reason (optional)',
+      },
+      metadata: {
+        type: 'object',
+        additionalProperties: true,
+        default: { refundId: 'REF-001', orderId: 'ORD-456' },
+        description: 'Custom metadata object (optional)',
+      },
+      provider: {
+        type: 'string',
+        enum: ['itec', 'paypack'],
+        default: 'itec',
+        description: 'Payment provider (optional, defaults to ITEC)',
+      },
     },
   },
   response: {
@@ -117,20 +184,36 @@ export const getMobilePaymentByRefSchema: FastifySchema = {
 
 export const listMobilePaymentsSchema: FastifySchema = {
   tags: ['Mobile Payments'],
-  summary: 'List Payments',
-  description: 'List all mobile payments for your merchant account with optional filters',
+  summary: 'List Payments (with Filters)',
+  description:
+    'Retrieve paginated list of all mobile payments for your merchant account. Filter by status and payment type. Supports pagination up to 100 items per page.\n\n**Example Query:** ?page=1&limit=20&status=SUCCESSFUL&type=CASHIN',
   security: bearerAuth,
   querystring: {
     type: 'object',
     properties: {
-      page: { type: 'integer', minimum: 1, default: 1, description: 'Page number' },
-      limit: { type: 'integer', minimum: 1, maximum: 100, default: 20, description: 'Items per page (max 100)' },
+      page: {
+        type: 'integer',
+        minimum: 1,
+        default: 1,
+        description: 'Page number (starts at 1). Default: 1',
+      },
+      limit: {
+        type: 'integer',
+        minimum: 1,
+        maximum: 100,
+        default: 20,
+        description: 'Number of items per page (max 100). Default: 20',
+      },
       status: {
         type: 'string',
         enum: ['PENDING', 'PROCESSING', 'SUCCESSFUL', 'FAILED'],
-        description: 'Filter by status',
+        description: 'Filter by payment status (optional). Values: PENDING, PROCESSING, SUCCESSFUL, FAILED',
       },
-      type: { type: 'string', enum: ['CASHIN', 'CASHOUT'], description: 'Filter by payment type' },
+      type: {
+        type: 'string',
+        enum: ['CASHIN', 'CASHOUT'],
+        description: 'Filter by payment type (optional). CASHIN = collect, CASHOUT = send',
+      },
     },
   },
   response: {
@@ -147,10 +230,10 @@ export const listMobilePaymentsSchema: FastifySchema = {
         pagination: {
           type: 'object',
           properties: {
-            total: { type: 'integer' },
-            page: { type: 'integer' },
-            limit: { type: 'integer' },
-            pages: { type: 'integer' },
+            total: { type: 'integer', description: 'Total number of payments (e.g., 150)' },
+            page: { type: 'integer', description: 'Current page number (e.g., 1)' },
+            limit: { type: 'integer', description: 'Items per page (e.g., 20)' },
+            pages: { type: 'integer', description: 'Total number of pages (e.g., 8)' },
           },
         },
       },
@@ -160,8 +243,9 @@ export const listMobilePaymentsSchema: FastifySchema = {
 
 export const accountInfoSchema: FastifySchema = {
   tags: ['Mobile Payments'],
-  summary: 'Get Account Info',
-  description: 'Retrieve Paypack account balance and rate information',
+  summary: 'Get Account Balance & Rates',
+  description:
+    'Retrieve your Paypack merchant account balance, name, and transaction fee rates.\n\n**Example Response:** balance=50000.5, currency="RWF", merchantName="Afrisinc Ltd", inRate=1.5, outRate=2.0',
   security: bearerAuth,
   response: {
     200: {
@@ -173,11 +257,26 @@ export const accountInfoSchema: FastifySchema = {
         data: {
           type: 'object',
           properties: {
-            balance: { type: 'number', description: 'Current account balance in RWF' },
-            currency: { type: 'string', example: 'RWF' },
-            merchantName: { type: 'string', description: 'Paypack account name' },
-            inRate: { type: 'number', description: 'Cashin fee rate (percentage)' },
-            outRate: { type: 'number', description: 'Cashout fee rate (percentage)' },
+            balance: {
+              type: 'number',
+              description: 'Current account balance in RWF (e.g., 50000.5)',
+            },
+            currency: {
+              type: 'string',
+              description: 'Currency code (always "RWF")',
+            },
+            merchantName: {
+              type: 'string',
+              description: 'Your Paypack merchant account name (e.g., Afrisinc Ltd)',
+            },
+            inRate: {
+              type: 'number',
+              description: 'Cashin (payment collection) fee rate in percentage (e.g., 1.5)',
+            },
+            outRate: {
+              type: 'number',
+              description: 'Cashout (fund disbursement) fee rate in percentage (e.g., 2.0)',
+            },
           },
         },
       },

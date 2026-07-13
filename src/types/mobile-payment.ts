@@ -18,6 +18,7 @@ export interface CashinParams {
   customerName?: string;
   description?: string;
   metadata?: Record<string, unknown>;
+  provider?: 'itec' | 'paypack'; // Default: 'itec' (ITEC is primary provider)
 }
 
 export interface CashoutParams {
@@ -28,6 +29,7 @@ export interface CashoutParams {
   recipientName?: string;
   description?: string;
   metadata?: Record<string, unknown>;
+  provider?: 'itec' | 'paypack'; // Default: 'itec' (ITEC is primary provider)
 }
 
 export interface MobilePaymentResult {
@@ -100,6 +102,36 @@ export interface CashinRequestParams extends CashinParams {
 
 export interface CashoutRequestParams extends CashoutParams {
   merchant: Merchant;
+}
+
+export interface CardPaymentParams {
+  merchantId: string;
+  orderId: string;
+  amount: number;
+  email: string;
+  customerName?: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CardPaymentRequestParams extends CardPaymentParams {
+  merchant: Merchant;
+}
+
+export interface CardPaymentResult {
+  id: string;
+  ref: string;
+  orderId: string;
+  amount: number;
+  currency: string;
+  email: string;
+  type: 'CARD';
+  status: 'PENDING' | 'PROCESSING' | 'SUCCESSFUL' | 'FAILED';
+  pcode: string;
+  checkoutUrl: string;
+  validUntil: string;
+  provider: string;
+  createdAt: string;
 }
 
 // ============================================================================

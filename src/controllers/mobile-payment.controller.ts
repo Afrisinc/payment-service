@@ -30,6 +30,7 @@ export class MobilePaymentController {
       customerName?: string;
       description?: string;
       metadata?: Record<string, unknown>;
+      provider?: 'itec' | 'paypack';
     };
 
     const result = await this.mobilePaymentService.cashin({
@@ -41,6 +42,7 @@ export class MobilePaymentController {
       customerName: body.customerName,
       description: body.description,
       metadata: body.metadata,
+      provider: body.provider,
     });
 
     return ResponseHandler.success(reply, 1000, 'Cashin initiated successfully', result, 201);
@@ -57,6 +59,7 @@ export class MobilePaymentController {
       recipientName?: string;
       description?: string;
       metadata?: Record<string, unknown>;
+      provider?: 'itec' | 'paypack';
     };
 
     const result = await this.mobilePaymentService.cashout({
@@ -68,6 +71,7 @@ export class MobilePaymentController {
       recipientName: body.recipientName,
       description: body.description,
       metadata: body.metadata,
+      provider: body.provider,
     });
 
     return ResponseHandler.success(reply, 1000, 'Cashout initiated successfully', result, 201);
