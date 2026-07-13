@@ -141,7 +141,7 @@ export class ItecHelper {
       const payload = {
         action: 'status_check',
         req_ref: reqRef,
-        key: this.getApiKeyForMethod('mobile_money'), // Use Mobile Money specific key
+        key: this.getApiKeyForMethod('default'), // Use default/fallback API key
       };
 
       const response = await this.api.post<ItecStatusCheckResponse>(`${this.baseUrl}/api2/verify`, payload);
@@ -162,10 +162,15 @@ export class ItecHelper {
 
   async requestCashout(params: ItecCashoutRequest): Promise<ItecCashoutResponse> {
     try {
+      const normalizedPhone = this.normalizePhone(params.phone);
+
+      // Auto-detect provider from phone number for cashout
+      const provider = this.detectProviderFromPhone(normalizedPhone);
+
       const payload = {
         amount: params.amount,
-        phone: this.normalizePhone(params.phone),
-        key: this.getApiKeyForMethod('mobile_money'), // Use Mobile Money specific key
+        phone: normalizedPhone,
+        key: this.getApiKeyForMethod(provider), // Use provider-specific key (mtn or airtel)
       };
 
       const response = await this.api.post<ItecCashoutResponse>(`${this.baseUrl}/api/transfer`, payload);
