@@ -18,3 +18,11 @@ export {
   accountInfoSchema,
   mobileWebhookSchema,
 } from './mobile-payment.schema.js';
+
+export {
+  initiateCardPaymentSchema,
+  getCardPaymentSchema,
+  getCardPaymentByPcodeSchema,
+  listCardPaymentsSchema,
+  cardWebhookSchema,
+} from './card-payment.schema.js';

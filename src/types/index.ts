@@ -69,3 +69,32 @@ export type {
   PaypackEventsResponse,
   PaypackEventsQuery,
 } from './paypack.js';
+
+// ITEC API Types
+export type {
+  ItecConfig,
+  ItecPaymentRequest,
+  ItecPaymentResponse,
+  ItecStatusCheckRequest,
+  ItecStatusCheckResponse,
+  ItecCashoutRequest,
+  ItecCashoutResponse,
+  ItecReportRequest,
+  ItecReportResponse,
+  ItecCallbackPayload,
+  ItecV1PaymentRequest,
+  ItecV1PaymentResponse,
+  ItecCardPaymentRequest,
+  ItecCardPaymentResponse,
+  ItecCardCallbackPayload,
+} from './itec.js';
+
+// Payment Provider Types
+export type {
+  ProviderTransactionRequest,
+  ProviderTransactionResponse,
+  ProviderStatusResponse,
+  PaymentProviderAdapter,
+} from './payment-provider.js';
+
+export { PaymentProvider } from './payment-provider.js';

@@ -17,6 +17,13 @@ const envSchema = z.object({
   PAYPACK_WEBHOOK_SECRET: z.string().optional(),
   PAYPACK_API_BASE_URL: z.string().url().default('https://payments.paypack.rw'),
 
+  // ITEC Payment Provider (supports multiple payment methods with separate API keys)
+  ITEC_API_KEY: z.string().min(1).optional(), // Default/fallback API key
+  ITEC_MTN_KEY: z.string().min(1).optional(), // MTN Mobile Money (separate key)
+  ITEC_AIRTEL_KEY: z.string().min(1).optional(), // Airtel Money (separate key)
+  ITEC_CARD_API_KEY: z.string().min(1).optional(), // Card payments (Visa, Mastercard, Amex)
+  ITEC_BASE_URL: z.string().url().default('https://pay.itecpay.rw'),
+
   FRONTEND_URL: z.string().url().default('https://afrisinc.com'),
 
   ENABLE_SWAGGER: z
