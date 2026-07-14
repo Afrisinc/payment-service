@@ -247,7 +247,13 @@ export class ItecHelper {
       );
 
       if (response.data.status !== 200) {
-        throw new ItecError('Card payment code generation failed', response.data.status);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        const errorMsg = (response.data as unknown as Record<string, unknown>)?.message as string | undefined;
+        const details = errorMsg ? `: ${errorMsg}` : '';
+        throw new ItecError(
+          `Card payment code generation failed (Status: ${response.data.status})${details}`,
+          response.data.status,
+        );
       }
 
       return response.data;
