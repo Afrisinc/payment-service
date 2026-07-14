@@ -13,13 +13,10 @@ async function swaggerPlugin(fastify: FastifyInstance): Promise<void> {
   // Build servers array based on environment
   const servers: Array<{ url: string; description: string }> = [];
 
-  // Add API_BASE_URL for staging/production
-  if (env.NODE_ENV !== 'development' && env.API_BASE_URL) {
+  // Only use API_BASE_URL if configured
+  if (env.API_BASE_URL) {
     servers.push({ url: env.API_BASE_URL, description: `${env.NODE_ENV} server` });
   }
-
-  // Always add development server (localhost)
-  servers.push({ url: `http://localhost:${env.PORT}`, description: 'Development server (local)' });
 
   await fastify.register(swagger, {
     openapi: {
