@@ -61,8 +61,7 @@ export const initiateCardPaymentSchema: FastifySchema = {
       currency: {
         type: 'string',
         default: 'RWF',
-        example: 'RWF',
-        description: 'Currency code (default: RWF). Optional.',
+        description: 'Currency code (default: RWF). Optional. Example: RWF, USD',
       },
       customerName: {
         type: 'string',
