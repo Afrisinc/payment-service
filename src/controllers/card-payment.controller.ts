@@ -26,6 +26,7 @@ export class CardPaymentController {
       orderId: string;
       amount: number;
       email: string;
+      currency?: string;
       customerName?: string;
       description?: string;
       metadata?: Record<string, unknown>;
@@ -37,6 +38,7 @@ export class CardPaymentController {
       orderId: body.orderId,
       amount: body.amount,
       email: body.email,
+      currency: body.currency || 'RWF',
       customerName: body.customerName,
       description: body.description,
       metadata: body.metadata,

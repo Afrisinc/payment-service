@@ -109,6 +109,7 @@ export interface CardPaymentParams {
   orderId: string;
   amount: number;
   email: string;
+  currency?: string; // Default: 'RWF'
   customerName?: string;
   description?: string;
   metadata?: Record<string, unknown>;
