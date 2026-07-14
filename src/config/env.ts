@@ -2,7 +2,7 @@ import { z } from 'zod';
 import 'dotenv/config';
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NODE_ENV: z.enum(['development', 'staging', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(3400),
   HOST: z.string().default('0.0.0.0'),
 
@@ -25,12 +25,12 @@ const envSchema = z.object({
   ITEC_BASE_URL: z.string().url().default('https://pay.itecpay.rw'),
 
   FRONTEND_URL: z.string().url().default('https://afrisinc.com'),
+  API_BASE_URL: z.string().url().optional(),
 
   ENABLE_SWAGGER: z
     .string()
     .transform((val) => val === 'true')
     .default('false'),
-  API_BASE_URL: z.string().url().optional(),
 
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 });
