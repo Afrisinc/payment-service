@@ -1,0 +1,1002 @@
+{
+  "info": {
+    "_postman_id": "cf2c5cd6-471e-4a47-b422-8a2dc85f5dc7",
+    "name": "ITEC PAYMENT",
+    "description": "# ITEC Payment API — Integration Guide\n\nThe **ITEC Payment API** enables businesses and developers to accept mobile money payments (MTN MoMo, Airtel, SPENN), card payments (via PesaPal), and perform cashouts/transfers — all through a simple REST interface.\n\n---\n\n## Base URLs\n\n| Version | Base URL |\n|---------|----------|\n| **V1** | `https://pay.itecpay.rw/api` |\n| **V2** | `https://pay.itecpay.rw/api2` |\n\n> **V2 is recommended** for new integrations. It supports reference-based payment tracking (`req_ref`), richer callbacks, and a dedicated status-check endpoint.\n\n---\n\n## Authentication\n\nITEC Payment uses **API Key authentication**. Your API key is passed directly in the JSON request body as the `key` field — there are no Authorization headers required.\n\n```json\n{\n  \"key\": \"YOUR_API_KEY_HERE\",\n  ...\n}\n```\n\n> Keep your API key secret. Never expose it in client-side code or public repositories.\n\n---\n\n## Quick Start\n\n### 1. Initiate a Payment (V2 MoMo)\n\n```http\nPOST https://pay.itecpay.rw/api2/pay\nContent-Type: application/json\n\n{\n  \"amount\": 10,\n  \"phone\": \"0798760888\",\n  \"key\": \"YOUR_API_KEY\",\n  \"req_ref\": \"unique-reference-uuid\",\n  \"note\": \"Optional note for user\",\n  \"message\": \"Optional short message\"\n}\n```\n\n### 2. Poll for Status\n\n```http\nPOST https://pay.itecpay.rw/api2/verify\nContent-Type: application/json\n\n{\n  \"action\": \"status_check\",\n  \"req_ref\": \"unique-reference-uuid\",\n  \"key\": \"YOUR_API_KEY\"\n}\n```\n\n### 3. Receive Callback\n\nITEC will POST a callback to your registered endpoint once the transaction is complete:\n\n```json\n{\n  \"status\": 200,\n  \"data\": {\n    \"transaction_id\": \"c1e8892e-89ff-4aa1-bcda-c1c51198f3bf\",\n    \"amount\": \"10\",\n    \"status\": \"SUCCESS\"\n  }\n}\n```\n\n---\n\n## API Versioning: V1 vs V2\n\n| Feature | V1 | V2 |\n|---|---|---|\n| MoMo Payments | ✅ | ✅ |\n| SPENN & Airtel | ✅ | ❌ |\n| Card Payments (PesaPal) | ✅ | ❌ |\n| Payment Reference (`req_ref`) | ❌ | ✅ |\n| Status Check Endpoint | ❌ | ✅ |\n| Richer Callback Payload | ❌ | ✅ |\n| Recommended for new integrations | ❌ | ✅ |\n\n---\n\n## Integration Flow\n\n```\nYour App                        ITEC API                     Customer Phone\n   |                               |                               |\n   |-- POST /api2/pay -----------> |                               |\n   |   { amount, phone, key,       |                               |\n   |     req_ref, note, message }  |                               |\n   |                               |-- Push payment prompt ------> |\n   |<-- 200 { transID } ---------- |                               |\n   |                               |                               |\n   |   (poll or wait for callback) |                               |\n   |                               |                               |\n   |-- POST /api2/verify --------> |   Customer approves/rejects   |\n   |   { action, req_ref, key }    |<------------------------------ |\n   |<-- { status: PENDING/SUCCESS }|                               |\n   |                               |                               |\n   |<-- POST your_callback_url --- |  (ITEC pushes final status)   |\n   |   { transaction_id, amount,   |                               |\n   |     status: SUCCESS/FAILED }  |                               |\n```\n\n---\n\n## Callback / Webhook Setup\n\nITEC will send a **POST request** to your callback URL when a transaction status changes. You must:\n\n1. Register your callback URL with ITEC (contact support or configure in your dashboard).\n2. Expose a publicly accessible HTTPS endpoint on your server.\n3. Respond with HTTP `200 OK` to acknowledge receipt.\n4. Validate the `transaction_id` and `amount` against your records before fulfilling orders.\n\n**V2 MoMo Callback Payload:**\n```json\n{\n  \"status\": 200,\n  \"data\": {\n    \"transaction_id\": \"c1e8892e-89ff-4aa1-bcda-c1c51198f3bf\",\n    \"amount\": \"10\",\n    \"status\": \"SUCCESS\"\n  }\n}\n```\n\n**V1 Cards Callback Payload:**\n```json\n{\n  \"PCODE\": \"BJ909000\",\n  \"amount\": \"2000\",\n  \"transID\": \"TYU-678-GHJ-GHJ-678\"\n}\n```\n\n> Always verify the transaction on your end before delivering goods or services.\n\n---\n\n## Error Handling\n\n| HTTP Status | Meaning | Action |\n|---|---|---|\n| `200` | Success | Process the response |\n| `400` | Bad Request / Unauthorized | Check your API key and request body |\n| `5xx` | Server Error | Retry with exponential backoff |\n\n**Common error response:**\n```json\n{\n  \"status\": 400,\n  \"data\": { \"message\": \"Unauthorized\" }\n}\n```\n\n**Best practices:**\n- Always check the `status` field in the response body (not just HTTP status code).\n- Use `req_ref` (V2) to idempotently track and retry payments.\n- Implement a status-polling fallback in case callbacks are delayed.\n- Log all transaction IDs for reconciliation.\n\n---\n\n## Reports\n\nRetrieve transaction history using the `/api/report` endpoint. Filter by type using the `report` field:\n\n| Report Type | `report` value |\n|---|---|\n| All Transactions | `\"all\"` |\n| Payments only | `\"payments\"` |\n| Transfers/Cashouts | `\"transfers\"` |\n| Charges | `\"charges\"` |\n\nDate range is specified as `start` and `end` in `YYYYMMDDHHmmss` format (e.g., `20250101000000`).\n\n---\n\n## Support\n\nFor API keys, integration support, or to register your callback URL, contact **ITEC** at [tech@itec.rw](mailto:tech@itec.rw) or visit [https://pay.itecpay.rw](https://pay.itecpay.rw).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "20418949"
+  },
+  "item": [
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Payments Report",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"key\": \"\",\r\n    \"start\": 20250101000000,\r\n    \"end\": 20250102000000,\r\n    \"report\": \"payments\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://pay.itecpay.rw/api/report",
+              "protocol": "https",
+              "host": [
+                "pay",
+                "itecpay",
+                "rw"
+              ],
+              "path": [
+                "api",
+                "report"
+              ]
+            },
+            "description": "## Payments Report\n\nRetrieves a report of all incoming payments collected through your account within a specified date range.\n\n---\n\n### Request Body Parameters\n\n| Field | Type | Required | Description |\n|---|---|---|---|\n| `key` | string | ✅ | Your ITEC API key |\n| `start` | number | ✅ | Start of date range in `YYYYMMDDHHmmss` format (e.g. `20250101000000`) |\n| `end` | number | ✅ | End of date range in `YYYYMMDDHHmmss` format (e.g. `20250102000000`) |\n| `report` | string | ✅ | Must be `\"payments\"` for this endpoint |\n\n---\n\n### Code Samples\n\n**JavaScript (fetch)**\n```javascript\nconst response = await fetch('https://pay.itecpay.rw/api/report', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    key: 'YOUR_API_KEY',\n    start: 20250101000000,\n    end: 20250102000000,\n    report: 'payments'\n  })\n});\nconst data = await response.json();\nconsole.log(data);\n```\n\n**Python (requests)**\n```python\nimport requests\n\npayload = {\n    \"key\": \"YOUR_API_KEY\",\n    \"start\": 20250101000000,\n    \"end\": 20250102000000,\n    \"report\": \"payments\"\n}\n\nresponse = requests.post(\"https://pay.itecpay.rw/api/report\", json=payload)\nprint(response.json())\n```\n\n**PHP (cURL)**\n```php\n<?php\n$payload = json_encode([\n    \"key\"    => \"YOUR_API_KEY\",\n    \"start\"  => 20250101000000,\n    \"end\"    => 20250102000000,\n    \"report\" => \"payments\"\n]);\n\n$ch = curl_init(\"https://pay.itecpay.rw/api/report\");\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, $payload);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\"Content-Type: application/json\"]);\n\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;\n?>\n```\n\n---\n\n### Notes\n- Use this report to reconcile incoming revenue and verify payment completions.\n- Date range values use the format `YYYYMMDDHHmmss` as a **number** (not a string).\n- To retrieve all transaction types at once, use the **All Transactions Report** with `\"report\": \"all\"`."
+          },
+          "response": []
+        },
+        {
+          "name": "Transfers Report",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"key\": \"\",\r\n    \"start\": 20250101000000,\r\n    \"end\": 20250102000000,\r\n    \"report\": \"transfers\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://pay.itecpay.rw/api/report",
+              "protocol": "https",
+              "host": [
+                "pay",
+                "itecpay",
+                "rw"
+              ],
+              "path": [
+                "api",
+                "report"
+              ]
+            },
+            "description": "## Transfers Report\n\nRetrieves a report of all outgoing transfers (cashouts/disbursements) made from your account within a specified date range.\n\n---\n\n### Request Body Parameters\n\n| Field | Type | Required | Description |\n|---|---|---|---|\n| `key` | string | ✅ | Your ITEC API key |\n| `start` | number | ✅ | Start of date range in `YYYYMMDDHHmmss` format (e.g. `20250101000000`) |\n| `end` | number | ✅ | End of date range in `YYYYMMDDHHmmss` format (e.g. `20250102000000`) |\n| `report` | string | ✅ | Must be `\"transfers\"` for this endpoint |\n\n---\n\n### Code Samples\n\n**JavaScript (fetch)**\n```javascript\nconst response = await fetch('https://pay.itecpay.rw/api/report', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    key: 'YOUR_API_KEY',\n    start: 20250101000000,\n    end: 20250102000000,\n    report: 'transfers'\n  })\n});\nconst data = await response.json();\nconsole.log(data);\n```\n\n**Python (requests)**\n```python\nimport requests\n\npayload = {\n    \"key\": \"YOUR_API_KEY\",\n    \"start\": 20250101000000,\n    \"end\": 20250102000000,\n    \"report\": \"transfers\"\n}\n\nresponse = requests.post(\"https://pay.itecpay.rw/api/report\", json=payload)\nprint(response.json())\n```\n\n**PHP (cURL)**\n```php\n<?php\n$payload = json_encode([\n    \"key\"    => \"YOUR_API_KEY\",\n    \"start\"  => 20250101000000,\n    \"end\"    => 20250102000000,\n    \"report\" => \"transfers\"\n]);\n\n$ch = curl_init(\"https://pay.itecpay.rw/api/report\");\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, $payload);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\"Content-Type: application/json\"]);\n\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;\n?>\n```\n\n---\n\n### Notes\n- Use this report to audit all cashout/disbursement activity.\n- Date range values use the format `YYYYMMDDHHmmss` as a **number** (not a string).\n- To retrieve all transaction types at once, use the **All Transactions Report** with `\"report\": \"all\"`."
+          },
+          "response": []
+        },
+        {
+          "name": "Charges Report",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"key\": \"\",\r\n    \"start\": 20250101000000,\r\n    \"end\": 20250102000000,\r\n    \"report\": \"charges\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://pay.itecpay.rw/api/report",
+              "protocol": "https",
+              "host": [
+                "pay",
+                "itecpay",
+                "rw"
+              ],
+              "path": [
+                "api",
+                "report"
+              ]
+            },
+            "description": "## Charges Report\n\nRetrieves a report of all charges (fees deducted from your account) within a specified date range.\n\n---\n\n### Request Body Parameters\n\n| Field | Type | Required | Description |\n|---|---|---|---|\n| `key` | string | ✅ | Your ITEC API key |\n| `start` | number | ✅ | Start of date range in `YYYYMMDDHHmmss` format (e.g. `20250101000000`) |\n| `end` | number | ✅ | End of date range in `YYYYMMDDHHmmss` format (e.g. `20250102000000`) |\n| `report` | string | ✅ | Must be `\"charges\"` for this endpoint |\n\n---\n\n### Code Samples\n\n**JavaScript (fetch)**\n```javascript\nconst response = await fetch('https://pay.itecpay.rw/api/report', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    key: 'YOUR_API_KEY',\n    start: 20250101000000,\n    end: 20250102000000,\n    report: 'charges'\n  })\n});\nconst data = await response.json();\nconsole.log(data);\n```\n\n**Python (requests)**\n```python\nimport requests\n\npayload = {\n    \"key\": \"YOUR_API_KEY\",\n    \"start\": 20250101000000,\n    \"end\": 20250102000000,\n    \"report\": \"charges\"\n}\n\nresponse = requests.post(\"https://pay.itecpay.rw/api/report\", json=payload)\nprint(response.json())\n```\n\n**PHP (cURL)**\n```php\n<?php\n$payload = json_encode([\n    \"key\"    => \"YOUR_API_KEY\",\n    \"start\"  => 20250101000000,\n    \"end\"    => 20250102000000,\n    \"report\" => \"charges\"\n]);\n\n$ch = curl_init(\"https://pay.itecpay.rw/api/report\");\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, $payload);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\"Content-Type: application/json\"]);\n\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;\n?>\n```\n\n---\n\n### Notes\n- Use this report to reconcile fees and understand your cost per transaction.\n- Date range values use the format `YYYYMMDDHHmmss` as a **number** (not a string).\n- To retrieve all transaction types at once, use the **All Transactions Report** with `\"report\": \"all\"`."
+          },
+          "response": []
+        },
+        {
+          "name": "All Transactions Report",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"key\": \"\",\r\n    \"start\": 20250101000000,\r\n    \"end\": 20250102000000,\r\n    \"report\": \"all\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://pay.itecpay.rw/api/report",
+              "protocol": "https",
+              "host": [
+                "pay",
+                "itecpay",
+                "rw"
+              ],
+              "path": [
+                "api",
+                "report"
+              ]
+            },
+            "description": "## All Transactions Report\n\nRetrieves a full transaction history (payments, transfers, and charges) for your account within a specified date range.\n\n---\n\n### Request Body Parameters\n\n| Field | Type | Required | Description |\n|---|---|---|---|\n| `key` | string | ✅ | Your ITEC API key |\n| `start` | number | ✅ | Start of date range in `YYYYMMDDHHmmss` format (e.g. `20250101000000`) |\n| `end` | number | ✅ | End of date range in `YYYYMMDDHHmmss` format (e.g. `20250102000000`) |\n| `report` | string | ✅ | Must be `\"all\"` for this endpoint |\n\n---\n\n### Code Samples\n\n**JavaScript (fetch)**\n```javascript\nconst response = await fetch('https://pay.itecpay.rw/api/report', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    key: 'YOUR_API_KEY',\n    start: 20250101000000,\n    end: 20250102000000,\n    report: 'all'\n  })\n});\nconst data = await response.json();\nconsole.log(data);\n```\n\n**Python (requests)**\n```python\nimport requests\n\npayload = {\n    \"key\": \"YOUR_API_KEY\",\n    \"start\": 20250101000000,\n    \"end\": 20250102000000,\n    \"report\": \"all\"\n}\n\nresponse = requests.post(\"https://pay.itecpay.rw/api/report\", json=payload)\nprint(response.json())\n```\n\n**PHP (cURL)**\n```php\n<?php\n$payload = json_encode([\n    \"key\"    => \"YOUR_API_KEY\",\n    \"start\"  => 20250101000000,\n    \"end\"    => 20250102000000,\n    \"report\" => \"all\"\n]);\n\n$ch = curl_init(\"https://pay.itecpay.rw/api/report\");\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, $payload);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\"Content-Type: application/json\"]);\n\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;\n?>\n```\n\n---\n\n### Notes\n- Date range values use the format `YYYYMMDDHHmmss` as a **number** (not a string).\n- For filtered reports, use the **Payments Report**, **Transfers Report**, or **Charges Report** endpoints with their respective `report` values.\n- Keep date ranges reasonable (e.g. 1–7 days) to avoid large response payloads."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "V2",
+      "item": [
+        {
+          "name": "MOMO",
+          "item": [
+            {
+              "name": "Request Payment",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \"amount\": 10,\r\n    \"phone\": \"0798760888\",\r\n    \"key\": \"YAOUR API KEY HERE\",\r\n    \"req_ref\": \"15c637e1-a6ca-4788-b99f-cfe67db2fb5a\",\r\n    \"note\": \"YOUR NOTE TO BE IN TRANSACTION REPORT ON USER SIDE (OPTIONAL) (eg: invoice1234)\",\r\n    \"message\" : \"YOUR SHORT MESSAGE (optional) (Eg. Payment for incoice 1234)\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "https://pay.itecpay.rw/api2/pay",
+                  "protocol": "https",
+                  "host": [
+                    "pay",
+                    "itecpay",
+                    "rw"
+                  ],
+                  "path": [
+                    "api2",
+                    "pay"
+                  ]
+                },
+                "description": "## Request Payment (V2 — MoMo)\n\nInitiates a mobile money payment request to a customer's phone. ITEC sends a payment prompt to the specified phone number. On success, a `transID` is returned which can be used for reconciliation. Use `req_ref` (a unique UUID you generate) to track and verify the payment status later.\n\n---\n\n### Request Body Parameters\n\n| Field | Type | Required | Description |\n|---|---|---|---|\n| `amount` | number | ✅ | Amount to charge (in RWF) |\n| `phone` | string | ✅ | Customer's phone number (e.g. `0798760888`) |\n| `key` | string | ✅ | Your ITEC API key |\n| `req_ref` | string | ✅ | Unique reference UUID you generate for this transaction |\n| `note` | string | ❌ | Note shown to the user in their transaction report |\n| `message` | string | ❌ | Short message displayed during the payment prompt |\n\n---\n\n### Response Fields\n\n**Success (200)**\n\n| Field | Type | Description |\n|---|---|---|\n| `status` | number | `200` on success |\n| `data.amount` | number | Amount charged |\n| `data.transID` | string | ITEC's internal transaction ID |\n\n**Failure (400)**\n\n| Field | Type | Description |\n|---|---|---|\n| `status` | number | `400` on failure |\n| `data.message` | string | Error message (e.g. `\"Unauthorized\"`) |\n\n---\n\n### Code Samples\n\n**JavaScript (fetch)**\n```javascript\nconst response = await fetch('https://pay.itecpay.rw/api2/pay', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    amount: 10,\n    phone: '0798760888',\n    key: 'YOUR_API_KEY',\n    req_ref: '15c637e1-a6ca-4788-b99f-cfe67db2fb5a',\n    note: 'Payment for order #123',\n    message: 'Please approve your payment'\n  })\n});\nconst data = await response.json();\nconsole.log(data);\n// { status: 200, data: { amount: 10, transID: 'd3a98870-...' } }\n```\n\n**Python (requests)**\n```python\nimport requests\n\npayload = {\n    \"amount\": 10,\n    \"phone\": \"0798760888\",\n    \"key\": \"YOUR_API_KEY\",\n    \"req_ref\": \"15c637e1-a6ca-4788-b99f-cfe67db2fb5a\",\n    \"note\": \"Payment for order #123\",\n    \"message\": \"Please approve your payment\"\n}\n\nresponse = requests.post(\"https://pay.itecpay.rw/api2/pay\", json=payload)\nprint(response.json())\n# {'status': 200, 'data': {'amount': 10, 'transID': 'd3a98870-...'}}\n```\n\n**PHP (cURL)**\n```php\n<?php\n$payload = json_encode([\n    \"amount\"  => 10,\n    \"phone\"   => \"0798760888\",\n    \"key\"     => \"YOUR_API_KEY\",\n    \"req_ref\" => \"15c637e1-a6ca-4788-b99f-cfe67db2fb5a\",\n    \"note\"    => \"Payment for order #123\",\n    \"message\" => \"Please approve your payment\"\n]);\n\n$ch = curl_init(\"https://pay.itecpay.rw/api2/pay\");\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, $payload);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\"Content-Type: application/json\"]);\n\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;\n?>\n```\n\n---\n\n### Notes\n- Always generate a **unique `req_ref`** (UUID v4) per transaction — this is used to check payment status via `/api2/verify`.\n- Store the returned `transID` for reconciliation and reporting.\n- After initiating, poll `/api2/verify` or wait for the callback to confirm final status."
+              },
+              "response": [
+                {
+                  "name": "Success Payment Request(pending)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    \"amount\": 10,\r\n    \"phone\": \"0798760888\",\r\n    \"key\": \"eGx562IiN7y31CmZCnYgFZg1KWer2MWCjAVKn1J4fzEwnvO1Rhl0mebz6jHBMMqaX+2SO5ErkWFt3wERqPjW/Q==\",\r\n    \"req_ref\": \"15c637e1-a6ca-4788-b99f-cfe67db2fb5a\",\r\n    \"note\": \"ITECINV00025\",\r\n    \"message\" : \"ITECHOST Invoice - ITECINV00025\"\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "https://pay.itecpay.rw/api2/pay",
+                      "protocol": "https",
+                      "host": [
+                        "pay",
+                        "itecpay",
+                        "rw"
+                      ],
+                      "path": [
+                        "api2",
+                        "pay"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": null,
+                  "header": [
+                    {
+                      "key": "Connection",
+                      "value": "Keep-Alive"
+                    },
+                    {
+                      "key": "Keep-Alive",
+                      "value": "timeout=5, max=100"
+                    },
+                    {
+                      "key": "x-powered-by",
+                      "value": "PHP/8.1.30"
+                    },
+                    {
+                      "key": "expires",
+                      "value": "Thu, 19 Nov 1981 08:52:00 GMT"
+                    },
+                    {
+                      "key": "cache-control",
+                      "value": "no-store, no-cache, must-revalidate"
+                    },
+                    {
+                      "key": "pragma",
+                      "value": "no-cache"
+                    },
+                    {
+                      "key": "content-type",
+                      "value": "application/json"
+                    },
+                    {
+                      "key": "content-length",
+                      "value": "128"
+                    },
+                    {
+                      "key": "content-encoding",
+                      "value": "br"
+                    },
+                    {
+                      "key": "vary",
+                      "value": "Accept-Encoding"
+                    },
+                    {
+                      "key": "date",
+                      "value": "Thu, 04 Sep 2025 08:01:04 GMT"
+                    },
+                    {
+                      "key": "alt-svc",
+                      "value": "h3=\":443\"; ma=2592000, h3-29=\":443\"; ma=2592000, h3-Q050=\":443\"; ma=2592000, h3-Q046=\":443\"; ma=2592000, h3-Q043=\":443\"; ma=2592000, quic=\":443\"; ma=2592000; v=\"43,46\""
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"status\": 200,\n    \"data\": {\n        \"financial_transaction_id\": \"22693770203\",\n        \"transaction_id\": \"15c637e1-a6ca-4788-b99f-cfe67db2fb5a\",\n        \"amount\": \"10\",\n        \"currency\": \"RWF\",\n        \"status\": \"PENDING\"\n    }\n}"
+                },
+                {
+                  "name": "Failed Payment Request",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    \"amount\": 10,\r\n    \"phone\": \"0798760888\",\r\n    \"key\": \"eGx562IiN7y31CmZCnYgFZg1KWer2MWCjAVKn1J4fzEwnvO1Rhl0mebz6jHBMMqaX+2SO5ErkWFt3wERqPjW/Q==\",\r\n    \"req_ref\": \"15c637e1-a6ca-4788-b99f-cfe67db2fb5a\",\r\n    \"note\": \"ITECINV00025\",\r\n    \"message\" : \"ITECHOST Invoice - ITECINV00025\"\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "https://pay.itecpay.rw/api2/pay",
+                      "protocol": "https",
+                      "host": [
+                        "pay",
+                        "itecpay",
+                        "rw"
+                      ],
+                      "path": [
+                        "api2",
+                        "pay"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": null,
+                  "header": [
+                    {
+                      "key": "Connection",
+                      "value": "Keep-Alive"
+                    },
+                    {
+                      "key": "Keep-Alive",
+                      "value": "timeout=5, max=100"
+                    },
+                    {
+                      "key": "x-powered-by",
+                      "value": "PHP/8.1.30"
+                    },
+                    {
+                      "key": "expires",
+                      "value": "Thu, 19 Nov 1981 08:52:00 GMT"
+                    },
+                    {
+                      "key": "cache-control",
+                      "value": "no-store, no-cache, must-revalidate"
+                    },
+                    {
+                      "key": "pragma",
+                      "value": "no-cache"
+                    },
+                    {
+                      "key": "content-type",
+                      "value": "application/json"
+                    },
+                    {
+                      "key": "content-length",
+                      "value": "57"
+                    },
+                    {
+                      "key": "content-encoding",
+                      "value": "br"
+                    },
+                    {
+                      "key": "vary",
+                      "value": "Accept-Encoding"
+                    },
+                    {
+                      "key": "date",
+                      "value": "Thu, 04 Sep 2025 08:05:39 GMT"
+                    },
+                    {
+                      "key": "alt-svc",
+                      "value": "h3=\":443\"; ma=2592000, h3-29=\":443\"; ma=2592000, h3-Q050=\":443\"; ma=2592000, h3-Q046=\":443\"; ma=2592000, h3-Q043=\":443\"; ma=2592000, quic=\":443\"; ma=2592000; v=\"43,46\""
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"status\": 400,\n    \"data\": {\n        \"message\": \"Payment request failed\"\n    }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Request Cashout",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \"amount\": 10,\r\n    \"phone\": \"0798760888\",\r\n    \"key\": \"your_api_key_here\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "https://pay.itecpay.rw/api/transfer",
+                  "protocol": "https",
+                  "host": [
+                    "pay",
+                    "itecpay",
+                    "rw"
+                  ],
+                  "path": [
+                    "api",
+                    "transfer"
+                  ]
+                },
+                "description": "## Request Cashout (V2 — MoMo)\n\nTransfers funds from your ITEC wallet to a mobile money account. Use this endpoint to disburse payments, refunds, or payouts to customers or agents.\n\n---\n\n### Request Body Parameters\n\n| Field | Type | Required | Description |\n|---|---|---|---|\n| `amount` | number | ✅ | Amount to transfer (in RWF) |\n| `phone` | string | ✅ | Recipient's phone number (e.g. `0798760888`) |\n| `key` | string | ✅ | Your ITEC API key |\n\n---\n\n### Code Samples\n\n**JavaScript (fetch)**\n```javascript\nconst response = await fetch('https://pay.itecpay.rw/api/transfer', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    amount: 10,\n    phone: '0798760888',\n    key: 'YOUR_API_KEY'\n  })\n});\nconst data = await response.json();\nconsole.log(data);\n```\n\n**Python (requests)**\n```python\nimport requests\n\npayload = {\n    \"amount\": 10,\n    \"phone\": \"0798760888\",\n    \"key\": \"YOUR_API_KEY\"\n}\n\nresponse = requests.post(\"https://pay.itecpay.rw/api/transfer\", json=payload)\nprint(response.json())\n```\n\n**PHP (cURL)**\n```php\n<?php\n$payload = json_encode([\n    \"amount\" => 10,\n    \"phone\"  => \"0798760888\",\n    \"key\"    => \"YOUR_API_KEY\"\n]);\n\n$ch = curl_init(\"https://pay.itecpay.rw/api/transfer\");\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, $payload);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\"Content-Type: application/json\"]);\n\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;\n?>\n```\n\n---\n\n### Notes\n- Ensure your ITEC wallet has sufficient balance before initiating a cashout.\n- This endpoint is shared between V1 and V2 — both use `https://pay.itecpay.rw/api/transfer`.\n- Verify the recipient phone number format before sending."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Payment Status",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \"action\": \"status_check\",\r\n    \"req_ref\": \"b20adbc8-3351-4b73-947e-3f18890a7cec\",\r\n    \"key\" : \"\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "https://pay.itecpay.rw/api2/verify",
+                  "protocol": "https",
+                  "host": [
+                    "pay",
+                    "itecpay",
+                    "rw"
+                  ],
+                  "path": [
+                    "api2",
+                    "verify"
+                  ]
+                },
+                "description": "## Get Payment Status (V2 — MoMo)\n\nChecks the current status of a previously initiated payment using the `req_ref` you provided when calling `/api2/pay`. Returns `PENDING`, `SUCCESS`, or `FAILED`.\n\nUse this endpoint to poll for payment confirmation if you haven't received a callback yet, or to verify a transaction before fulfilling an order.\n\n---\n\n### Request Body Parameters\n\n| Field | Type | Required | Description |\n|---|---|---|---|\n| `action` | string | ✅ | Must be `\"status_check\"` |\n| `req_ref` | string | ✅ | The unique reference UUID used when initiating the payment |\n| `key` | string | ✅ | Your ITEC API key |\n\n---\n\n### Response Fields\n\n| Field | Type | Description |\n|---|---|---|\n| `status` | number | `200` on a valid response |\n| `data.transaction_id` | string | ITEC's internal transaction ID |\n| `data.amount` | string | Transaction amount |\n| `data.status` | string | `PENDING`, `SUCCESS`, or `FAILED` |\n\n---\n\n### Code Samples\n\n**JavaScript (fetch)**\n```javascript\nconst response = await fetch('https://pay.itecpay.rw/api2/verify', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    action: 'status_check',\n    req_ref: 'b20adbc8-3351-4b73-947e-3f18890a7cec',\n    key: 'YOUR_API_KEY'\n  })\n});\nconst data = await response.json();\nconsole.log(data.data.status); // \"PENDING\" | \"SUCCESS\" | \"FAILED\"\n```\n\n**Python (requests)**\n```python\nimport requests\n\npayload = {\n    \"action\": \"status_check\",\n    \"req_ref\": \"b20adbc8-3351-4b73-947e-3f18890a7cec\",\n    \"key\": \"YOUR_API_KEY\"\n}\n\nresponse = requests.post(\"https://pay.itecpay.rw/api2/verify\", json=payload)\nresult = response.json()\nprint(result[\"data\"][\"status\"])  # \"PENDING\" | \"SUCCESS\" | \"FAILED\"\n```\n\n**PHP (cURL)**\n```php\n<?php\n$payload = json_encode([\n    \"action\"  => \"status_check\",\n    \"req_ref\" => \"b20adbc8-3351-4b73-947e-3f18890a7cec\",\n    \"key\"     => \"YOUR_API_KEY\"\n]);\n\n$ch = curl_init(\"https://pay.itecpay.rw/api2/verify\");\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, $payload);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\"Content-Type: application/json\"]);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n$result = json_decode($response, true);\necho $result[\"data\"][\"status\"]; // PENDING | SUCCESS | FAILED\n?>\n```\n\n---\n\n### Notes\n- Poll this endpoint every **5–10 seconds** while status is `PENDING`.\n- Stop polling once status is `SUCCESS` or `FAILED`.\n- Implement a **maximum retry limit** (e.g. 12 attempts over 60 seconds) to avoid infinite loops.\n- Prefer relying on the **callback** for production systems and use this endpoint as a fallback."
+              },
+              "response": [
+                {
+                  "name": "Pending transaction",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    \"action\": \"status_check\",\r\n    \"req_ref\": \"c1e8892e-89ff-4aa1-bcda-c1c51198f3bf\",\r\n    \"key\" : \"eGx562IiN7y31CmZCnYgFZg1KWer2MWCjAVKn1J4fzEwnvO1Rhl0mebz6jHBMMqaX+2SO5ErkWFt3wERqPjW/Q==\"\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "https://pay.itecpay.rw/api2/verify",
+                      "protocol": "https",
+                      "host": [
+                        "pay",
+                        "itecpay",
+                        "rw"
+                      ],
+                      "path": [
+                        "api2",
+                        "verify"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": null,
+                  "header": [
+                    {
+                      "key": "Connection",
+                      "value": "Keep-Alive"
+                    },
+                    {
+                      "key": "Keep-Alive",
+                      "value": "timeout=5, max=100"
+                    },
+                    {
+                      "key": "x-powered-by",
+                      "value": "PHP/8.1.30"
+                    },
+                    {
+                      "key": "expires",
+                      "value": "Thu, 19 Nov 1981 08:52:00 GMT"
+                    },
+                    {
+                      "key": "cache-control",
+                      "value": "no-store, no-cache, must-revalidate"
+                    },
+                    {
+                      "key": "pragma",
+                      "value": "no-cache"
+                    },
+                    {
+                      "key": "content-type",
+                      "value": "application/json"
+                    },
+                    {
+                      "key": "content-length",
+                      "value": "100"
+                    },
+                    {
+                      "key": "content-encoding",
+                      "value": "br"
+                    },
+                    {
+                      "key": "vary",
+                      "value": "Accept-Encoding"
+                    },
+                    {
+                      "key": "date",
+                      "value": "Thu, 04 Sep 2025 14:46:01 GMT"
+                    },
+                    {
+                      "key": "alt-svc",
+                      "value": "h3=\":443\"; ma=2592000, h3-29=\":443\"; ma=2592000, h3-Q050=\":443\"; ma=2592000, h3-Q046=\":443\"; ma=2592000, h3-Q043=\":443\"; ma=2592000, quic=\":443\"; ma=2592000; v=\"43,46\""
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"status\": 200,\n    \"data\": {\n        \"transaction_id\": \"c1e8892e-89ff-4aa1-bcda-c1c51198f3bf\",\n        \"amount\": \"10\",\n        \"status\": \"PENDING\"\n    }\n}"
+                },
+                {
+                  "name": "Successfull Transaction",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    \"action\": \"status_check\",\r\n    \"req_ref\": \"5d61899c-8af5-41fe-92ad-b0096bca64f6\",\r\n    \"key\" : \"eGx562IiN7y31CmZCnYgFZg1KWer2MWCjAVKn1J4fzEwnvO1Rhl0mebz6jHBMMqaX+2SO5ErkWFt3wERqPjW/Q==\"\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "https://pay.itecpay.rw/api2/verify",
+                      "protocol": "https",
+                      "host": [
+                        "pay",
+                        "itecpay",
+                        "rw"
+                      ],
+                      "path": [
+                        "api2",
+                        "verify"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": null,
+                  "header": [
+                    {
+                      "key": "Connection",
+                      "value": "Keep-Alive"
+                    },
+                    {
+                      "key": "Keep-Alive",
+                      "value": "timeout=5, max=100"
+                    },
+                    {
+                      "key": "x-powered-by",
+                      "value": "PHP/8.1.30"
+                    },
+                    {
+                      "key": "expires",
+                      "value": "Thu, 19 Nov 1981 08:52:00 GMT"
+                    },
+                    {
+                      "key": "cache-control",
+                      "value": "no-store, no-cache, must-revalidate"
+                    },
+                    {
+                      "key": "pragma",
+                      "value": "no-cache"
+                    },
+                    {
+                      "key": "content-type",
+                      "value": "application/json"
+                    },
+                    {
+                      "key": "content-length",
+                      "value": "101"
+                    },
+                    {
+                      "key": "content-encoding",
+                      "value": "br"
+                    },
+                    {
+                      "key": "vary",
+                      "value": "Accept-Encoding"
+                    },
+                    {
+                      "key": "date",
+                      "value": "Fri, 05 Sep 2025 20:24:46 GMT"
+                    },
+                    {
+                      "key": "alt-svc",
+                      "value": "h3=\":443\"; ma=2592000, h3-29=\":443\"; ma=2592000, h3-Q050=\":443\"; ma=2592000, h3-Q046=\":443\"; ma=2592000, h3-Q043=\":443\"; ma=2592000, quic=\":443\"; ma=2592000; v=\"43,46\""
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"status\": 200,\n    \"data\": {\n        \"transaction_id\": \"5d61899c-8af5-41fe-92ad-b0096bca64f6\",\n        \"amount\": \"10\",\n        \"status\": \"SUCCESSFUL\"\n    }\n}"
+                }
+              ]
+            },
+            {
+              "name": "EXPECTED CALLBACK",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \"status\": 200,\r\n    \"data\": {\r\n        \"transaction_id\": \"c1e8892e-89ff-4aa1-bcda-c1c51198f3bf\",\r\n        \"amount\": \"10\",\r\n        \"status\": \"PENDING\"\r\n    }\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "https://your_callback_endpoint",
+                  "protocol": "https",
+                  "host": [
+                    "your_callback_endpoint"
+                  ]
+                },
+                "description": "## Expected Callback (V2 — MoMo)\n\nThis is **not a request you send** — it represents the **POST request that ITEC sends to your server** when a transaction status changes. You must implement this endpoint on your backend and register the URL with ITEC.\n\n---\n\n### What ITEC Sends to Your Server\n\nITEC will POST the following JSON payload to your registered callback URL:\n\n| Field | Type | Description |\n|---|---|---|\n| `status` | number | `200` for a valid callback |\n| `data.transaction_id` | string | ITEC's internal transaction ID |\n| `data.amount` | string | Transaction amount in RWF |\n| `data.status` | string | `PENDING`, `SUCCESS`, or `FAILED` |\n\n**Example payload:**\n```json\n{\n  \"status\": 200,\n  \"data\": {\n    \"transaction_id\": \"c1e8892e-89ff-4aa1-bcda-c1c51198f3bf\",\n    \"amount\": \"10\",\n    \"status\": \"SUCCESS\"\n  }\n}\n```\n\n---\n\n### How to Implement Your Callback Endpoint\n\n**JavaScript (Express.js)**\n```javascript\nconst express = require('express');\nconst app = express();\napp.use(express.json());\n\napp.post('/itec/callback', (req, res) => {\n  const { status, data } = req.body;\n\n  if (status === 200 && data.status === 'SUCCESS') {\n    // Fulfill the order for data.transaction_id\n    console.log(`Payment confirmed: ${data.transaction_id}, Amount: ${data.amount}`);\n  } else if (data.status === 'FAILED') {\n    // Handle failed payment\n    console.log(`Payment failed: ${data.transaction_id}`);\n  }\n\n  // Always respond with 200 to acknowledge receipt\n  res.status(200).json({ received: true });\n});\n\napp.listen(3000);\n```\n\n**Python (Flask)**\n```python\nfrom flask import Flask, request, jsonify\n\napp = Flask(__name__)\n\n@app.route('/itec/callback', methods=['POST'])\ndef itec_callback():\n    payload = request.get_json()\n    transaction = payload.get('data', {})\n\n    if transaction.get('status') == 'SUCCESS':\n        # Fulfill order for transaction['transaction_id']\n        print(f\"Payment confirmed: {transaction['transaction_id']}\")\n    elif transaction.get('status') == 'FAILED':\n        print(f\"Payment failed: {transaction['transaction_id']}\")\n\n    return jsonify({\"received\": True}), 200\n\nif __name__ == '__main__':\n    app.run()\n```\n\n**PHP**\n```php\n<?php\n$payload = json_decode(file_get_contents('php://input'), true);\n$data = $payload['data'] ?? [];\n\nif ($data['status'] === 'SUCCESS') {\n    // Fulfill order for $data['transaction_id']\n    error_log(\"Payment confirmed: \" . $data['transaction_id']);\n} elseif ($data['status'] === 'FAILED') {\n    error_log(\"Payment failed: \" . $data['transaction_id']);\n}\n\nhttp_response_code(200);\necho json_encode([\"received\" => true]);\n?>\n```\n\n---\n\n### Notes\n- Your callback URL must be **publicly accessible** (HTTPS recommended).\n- Always **respond with HTTP 200** to acknowledge receipt — ITEC may retry if it doesn't receive a 200.\n- **Validate the `transaction_id`** against your database before fulfilling orders to prevent fraud.\n- Do not rely solely on callbacks — implement status polling via `/api2/verify` as a fallback.\n- Register your callback URL with ITEC support or via your merchant dashboard."
+              },
+              "response": []
+            }
+          ],
+          "description": "This section outlines how to initiate payment requests through **MTN Mobile Money**, **Airtel Money**, and **Spenn**. These mobile payment services provide a fast, secure, and convenient way for customers to complete transactions. By integrating this functionality into your application, you can prompt users to authorize payments directly from their wallets, ensuring a seamless checkout experience.\n\nWhether you're collecting payments for goods, services, or subscriptions, the API makes it easy to request payments, confirm their status, and manage transaction workflows efficiently. Detailed request and response structures, along with error handling, are provided to help you implement this functionality effortlessly."
+        }
+      ]
+    },
+    {
+      "name": "V1",
+      "item": [
+        {
+          "name": "MOMO-SPENN-AIRTEL",
+          "item": [
+            {
+              "name": "Request Payment",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \"amount\": 10,\r\n    \"phone\": \"0798760888\",\r\n    \"key\": \"your_api_key_here\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "https://pay.itecpay.rw/api/pay",
+                  "protocol": "https",
+                  "host": [
+                    "pay",
+                    "itecpay",
+                    "rw"
+                  ],
+                  "path": [
+                    "api",
+                    "pay"
+                  ]
+                },
+                "description": "## Request Payment (V1 — MoMo / SPENN / Airtel)\n\nInitiates a mobile money payment request via the V1 API. Supports MTN MoMo, SPENN, and Airtel Money. A payment prompt is sent to the customer's phone. On success, a `transID` is returned.\n\n> **Note:** For new integrations, consider using **V2** (`/api2/pay`) which supports `req_ref` for idempotent tracking and a dedicated status-check endpoint.\n\n---\n\n### Request Body Parameters\n\n| Field | Type | Required | Description |\n|---|---|---|---|\n| `amount` | number | ✅ | Amount to charge (in RWF) |\n| `phone` | string | ✅ | Customer's phone number (e.g. `0798760888`) |\n| `key` | string | ✅ | Your ITEC API key |\n\n---\n\n### Response Fields\n\n**Success (200)**\n\n| Field | Type | Description |\n|---|---|---|\n| `status` | number | `200` on success |\n| `data.amount` | number | Amount charged |\n| `data.transID` | string | ITEC's internal transaction ID |\n\n**Failure (400)**\n\n| Field | Type | Description |\n|---|---|---|\n| `status` | number | `400` on failure |\n| `data.message` | string | Error message (e.g. `\"Unauthorized\"`) |\n\n---\n\n### Code Samples\n\n**JavaScript (fetch)**\n```javascript\nconst response = await fetch('https://pay.itecpay.rw/api/pay', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    amount: 10,\n    phone: '0798760888',\n    key: 'YOUR_API_KEY'\n  })\n});\nconst data = await response.json();\nconsole.log(data);\n// { status: 200, data: { amount: 10, transID: 'd3a98870-...' } }\n```\n\n**Python (requests)**\n```python\nimport requests\n\npayload = {\n    \"amount\": 10,\n    \"phone\": \"0798760888\",\n    \"key\": \"YOUR_API_KEY\"\n}\n\nresponse = requests.post(\"https://pay.itecpay.rw/api/pay\", json=payload)\nprint(response.json())\n# {'status': 200, 'data': {'amount': 10, 'transID': 'd3a98870-...'}}\n```\n\n**PHP (cURL)**\n```php\n<?php\n$payload = json_encode([\n    \"amount\" => 10,\n    \"phone\"  => \"0798760888\",\n    \"key\"    => \"YOUR_API_KEY\"\n]);\n\n$ch = curl_init(\"https://pay.itecpay.rw/api/pay\");\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, $payload);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\"Content-Type: application/json\"]);\n\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;\n?>\n```\n\n---\n\n### Notes\n- V1 does not support `req_ref` — use the returned `transID` for tracking.\n- V1 supports **SPENN** and **Airtel Money** in addition to MTN MoMo.\n- There is no dedicated status-check endpoint in V1 — rely on callbacks or the Reports API for confirmation."
+              },
+              "response": [
+                {
+                  "name": "Success Payment",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    \"amount\": 10,\r\n    \"phone\": \"0798760888\",\r\n    \"key\": \"your_api_key_here\"\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "https://pay.itecpay.rw/api/pay",
+                      "protocol": "https",
+                      "host": [
+                        "pay",
+                        "itecpay",
+                        "rw"
+                      ],
+                      "path": [
+                        "api",
+                        "pay"
+                      ]
+                    }
+                  },
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json",
+                      "description": "",
+                      "type": "text"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"status\": 200,\n    \"data\": {\n        \"amount\": 10,\n        \"transID\": \"d3a98870-22c7-4ffe-b60a-c3c48721c408\"\n    }\n}"
+                },
+                {
+                  "name": "On Failure",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    \"amount\": 10,\r\n    \"phone\": \"0798760888\",\r\n    \"key\": \"your_api_key_here\"\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "https://pay.itecpay.rw/api/pay",
+                      "protocol": "https",
+                      "host": [
+                        "pay",
+                        "itecpay",
+                        "rw"
+                      ],
+                      "path": [
+                        "api",
+                        "pay"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Connection",
+                      "value": "Keep-Alive"
+                    },
+                    {
+                      "key": "Keep-Alive",
+                      "value": "timeout=5, max=100"
+                    },
+                    {
+                      "key": "x-powered-by",
+                      "value": "PHP/8.1.24"
+                    },
+                    {
+                      "key": "expires",
+                      "value": "Thu, 19 Nov 1981 08:52:00 GMT"
+                    },
+                    {
+                      "key": "cache-control",
+                      "value": "no-store, no-cache, must-revalidate"
+                    },
+                    {
+                      "key": "pragma",
+                      "value": "no-cache"
+                    },
+                    {
+                      "key": "content-type",
+                      "value": "application/json"
+                    },
+                    {
+                      "key": "content-length",
+                      "value": "50"
+                    },
+                    {
+                      "key": "content-encoding",
+                      "value": "br"
+                    },
+                    {
+                      "key": "vary",
+                      "value": "Accept-Encoding"
+                    },
+                    {
+                      "key": "date",
+                      "value": "Sat, 14 Dec 2024 14:49:10 GMT"
+                    },
+                    {
+                      "key": "alt-svc",
+                      "value": "h3=\":443\"; ma=2592000, h3-29=\":443\"; ma=2592000, h3-Q050=\":443\"; ma=2592000, h3-Q046=\":443\"; ma=2592000, h3-Q043=\":443\"; ma=2592000, quic=\":443\"; ma=2592000; v=\"43,46\""
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"status\": 400,\n    \"data\": {\n        \"message\": \"Unauthorized\"\n    }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Request Cashout",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \"amount\": 10,\r\n    \"phone\": \"0798760888\",\r\n    \"key\": \"your_api_key_here\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "https://pay.itecpay.rw/api/transfer",
+                  "protocol": "https",
+                  "host": [
+                    "pay",
+                    "itecpay",
+                    "rw"
+                  ],
+                  "path": [
+                    "api",
+                    "transfer"
+                  ]
+                },
+                "description": "## Request Cashout (V1 — MoMo / SPENN / Airtel)\n\nTransfers funds from your ITEC wallet to a mobile money account. Use this to disburse payments, refunds, or payouts to customers or agents via MTN MoMo, SPENN, or Airtel Money.\n\n---\n\n### Request Body Parameters\n\n| Field | Type | Required | Description |\n|---|---|---|---|\n| `amount` | number | ✅ | Amount to transfer (in RWF) |\n| `phone` | string | ✅ | Recipient's phone number (e.g. `0798760888`) |\n| `key` | string | ✅ | Your ITEC API key |\n\n---\n\n### Code Samples\n\n**JavaScript (fetch)**\n```javascript\nconst response = await fetch('https://pay.itecpay.rw/api/transfer', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    amount: 10,\n    phone: '0798760888',\n    key: 'YOUR_API_KEY'\n  })\n});\nconst data = await response.json();\nconsole.log(data);\n```\n\n**Python (requests)**\n```python\nimport requests\n\npayload = {\n    \"amount\": 10,\n    \"phone\": \"0798760888\",\n    \"key\": \"YOUR_API_KEY\"\n}\n\nresponse = requests.post(\"https://pay.itecpay.rw/api/transfer\", json=payload)\nprint(response.json())\n```\n\n**PHP (cURL)**\n```php\n<?php\n$payload = json_encode([\n    \"amount\" => 10,\n    \"phone\"  => \"0798760888\",\n    \"key\"    => \"YOUR_API_KEY\"\n]);\n\n$ch = curl_init(\"https://pay.itecpay.rw/api/transfer\");\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, $payload);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\"Content-Type: application/json\"]);\n\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;\n?>\n```\n\n---\n\n### Notes\n- The transfer endpoint (`/api/transfer`) is shared between V1 and V2.\n- Ensure your ITEC wallet has sufficient balance before initiating a cashout.\n- Verify the recipient phone number and network compatibility before sending."
+              },
+              "response": []
+            }
+          ],
+          "description": "This section outlines how to initiate payment requests through **MTN Mobile Money**, **Airtel Money**, and **Spenn**. These mobile payment services provide a fast, secure, and convenient way for customers to complete transactions. By integrating this functionality into your application, you can prompt users to authorize payments directly from their wallets, ensuring a seamless checkout experience.\n\nWhether you're collecting payments for goods, services, or subscriptions, the API makes it easy to request payments, confirm their status, and manage transaction workflows efficiently. Detailed request and response structures, along with error handling, are provided to help you implement this functionality effortlessly."
+        },
+        {
+          "name": "Cards",
+          "item": [
+            {
+              "name": "Request Payment",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n\t\"amount\": 5000,\r\n\t\"email\": \"tech@itec.rw\",\r\n\t\"key\": \"your_cards_api_key_here\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "https://pay.itecpay.rw/api/pay/apis/pesapal/generatecode",
+                  "protocol": "https",
+                  "host": [
+                    "pay",
+                    "itecpay",
+                    "rw"
+                  ],
+                  "path": [
+                    "api",
+                    "pay",
+                    "apis",
+                    "pesapal",
+                    "generatecode"
+                  ]
+                },
+                "description": "## Request Payment — Generate Code (V1 — Cards / PesaPal)\n\nGenerates a payment code and a hosted payment link for card payments via PesaPal. The customer is redirected to the returned `link` to complete payment using their debit/credit card.\n\n---\n\n### Request Body Parameters\n\n| Field | Type | Required | Description |\n|---|---|---|---|\n| `amount` | number | ✅ | Amount to charge (in RWF) |\n| `email` | string | ✅ | Customer's email address |\n| `key` | string | ✅ | Your ITEC Cards API key |\n\n---\n\n### Response Fields\n\n**Success (200)**\n\n| Field | Type | Description |\n|---|---|---|\n| `status` | number | `200` on success |\n| `PCODE` | string | Unique payment code for this transaction |\n| `amount` | number | Amount to be charged |\n| `link` | string | Hosted PesaPal payment URL to redirect the customer to |\n| `valid_until` | string | Expiry datetime of the payment link (`YYYY-MM-DD HH:mm:ss`) |\n\n**Failure (400)**\n\n| Field | Type | Description |\n|---|---|---|\n| `status` | number | `400` on failure |\n| `PCODE` | null | `null` on failure |\n| `amount` | null | `null` on failure |\n\n---\n\n### Code Samples\n\n**JavaScript (fetch)**\n```javascript\nconst response = await fetch('https://pay.itecpay.rw/api/pay/apis/pesapal/generatecode', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    amount: 5000,\n    email: 'customer@example.com',\n    key: 'YOUR_CARDS_API_KEY'\n  })\n});\nconst data = await response.json();\n\nif (data.status === 200) {\n  // Redirect customer to payment page\n  window.location.href = data.link;\n}\n```\n\n**Python (requests)**\n```python\nimport requests\n\npayload = {\n    \"amount\": 5000,\n    \"email\": \"customer@example.com\",\n    \"key\": \"YOUR_CARDS_API_KEY\"\n}\n\nresponse = requests.post(\n    \"https://pay.itecpay.rw/api/pay/apis/pesapal/generatecode\",\n    json=payload\n)\nresult = response.json()\n\nif result[\"status\"] == 200:\n    print(f\"Redirect customer to: {result['link']}\")\n    print(f\"Payment code: {result['PCODE']}\")\n    print(f\"Valid until: {result['valid_until']}\")\n```\n\n**PHP (cURL)**\n```php\n<?php\n$payload = json_encode([\n    \"amount\" => 5000,\n    \"email\"  => \"customer@example.com\",\n    \"key\"    => \"YOUR_CARDS_API_KEY\"\n]);\n\n$ch = curl_init(\"https://pay.itecpay.rw/api/pay/apis/pesapal/generatecode\");\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, $payload);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\"Content-Type: application/json\"]);\n\n$response = curl_exec($ch);\ncurl_close($ch);\n$result = json_decode($response, true);\n\nif ($result['status'] === 200) {\n    // Redirect customer\n    header(\"Location: \" . $result['link']);\n    exit;\n}\n?>\n```\n\n---\n\n### Notes\n- Store the `PCODE` — ITEC will include it in the callback when the customer completes payment.\n- The `link` is a hosted PesaPal checkout page. Redirect the customer to this URL.\n- Payment links expire at `valid_until` — generate a new code if the link has expired.\n- Use a **Cards-specific API key** (separate from your MoMo key)."
+              },
+              "response": [
+                {
+                  "name": "Successful PURCHASE CODE RESPONSE",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n\t\"amount\": 5000,\r\n\t\"email\": \"tech@itec.rw\",\r\n\t\"key\": \"your_cards_api_key_here\"\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "https://pay.itecpay.rw/api/pay/apis/pesapal/generatecode",
+                      "protocol": "https",
+                      "host": [
+                        "pay",
+                        "itecpay",
+                        "rw"
+                      ],
+                      "path": [
+                        "api",
+                        "pay",
+                        "apis",
+                        "pesapal",
+                        "generatecode"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Connection",
+                      "value": "Keep-Alive"
+                    },
+                    {
+                      "key": "Keep-Alive",
+                      "value": "timeout=5, max=100"
+                    },
+                    {
+                      "key": "x-powered-by",
+                      "value": "PHP/8.1.24"
+                    },
+                    {
+                      "key": "expires",
+                      "value": "Thu, 19 Nov 1981 08:52:00 GMT"
+                    },
+                    {
+                      "key": "cache-control",
+                      "value": "no-store, no-cache, must-revalidate"
+                    },
+                    {
+                      "key": "pragma",
+                      "value": "no-cache"
+                    },
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json",
+                      "description": "",
+                      "type": "text"
+                    },
+                    {
+                      "key": "content-length",
+                      "value": "152"
+                    },
+                    {
+                      "key": "content-encoding",
+                      "value": "br"
+                    },
+                    {
+                      "key": "vary",
+                      "value": "Accept-Encoding"
+                    },
+                    {
+                      "key": "date",
+                      "value": "Sat, 14 Dec 2024 14:34:37 GMT"
+                    },
+                    {
+                      "key": "alt-svc",
+                      "value": "h3=\":443\"; ma=2592000, h3-29=\":443\"; ma=2592000, h3-Q050=\":443\"; ma=2592000, h3-Q046=\":443\"; ma=2592000, h3-Q043=\":443\"; ma=2592000, quic=\":443\"; ma=2592000; v=\"43,46\""
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"status\": 200,\n    \"PCODE\": \"WSZT5ZJQE22QDZQLUMA8\",\n    \"amount\": 5000,\n    \"link\": \"https://pay.itecpay.rw/api/pay/apis/pesapal/index?PCODE=WSZT5ZJQE22QDZQLUMA8\",\n    \"valid_until\": \"2024-12-14 17:04:37\"\n}"
+                },
+                {
+                  "name": "Failed PURCHASE CODE Generation",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n\t\"amount\": 5000,\r\n\t\"email\": \"tech@itec.rw\",\r\n\t\"key\": \"your_cards_api_key_here\"\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "https://pay.itecpay.rw/api/pay/apis/pesapal/generatecode",
+                      "protocol": "https",
+                      "host": [
+                        "pay",
+                        "itecpay",
+                        "rw"
+                      ],
+                      "path": [
+                        "api",
+                        "pay",
+                        "apis",
+                        "pesapal",
+                        "generatecode"
+                      ]
+                    }
+                  },
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json",
+                      "description": "",
+                      "type": "text"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"status\": 400,\n    \"PCODE\": null,\n    \"amount\": null\n}"
+                }
+              ]
+            },
+            {
+              "name": "Callback we send to you",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \"PCODE\":\"BJ909000\",\r\n    \"amount\": \"2000\",\r\n    \"transID\":\"TYU-678-GHJ-GHJ-678\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "https://your_callback",
+                  "protocol": "https",
+                  "host": [
+                    "your_callback"
+                  ]
+                },
+                "description": "## Callback We Send to You (V1 — Cards / PesaPal)\n\nThis is **not a request you send** — it represents the **POST request that ITEC sends to your server** after a customer completes a card payment via PesaPal. You must implement this endpoint on your backend and register the URL with ITEC.\n\n---\n\n### What ITEC Sends to Your Server\n\n| Field | Type | Description |\n|---|---|---|\n| `PCODE` | string | The payment code originally generated by `/generatecode` |\n| `amount` | string | Amount paid by the customer (in RWF) |\n| `transID` | string | ITEC's internal transaction ID |\n\n**Example payload:**\n```json\n{\n  \"PCODE\": \"BJ909000\",\n  \"amount\": \"2000\",\n  \"transID\": \"TYU-678-GHJ-GHJ-678\"\n}\n```\n\n---\n\n### How to Implement Your Callback Endpoint\n\n**JavaScript (Express.js)**\n```javascript\nconst express = require('express');\nconst app = express();\napp.use(express.json());\n\napp.post('/itec/cards/callback', (req, res) => {\n  const { PCODE, amount, transID } = req.body;\n\n  // Match PCODE to your pending order\n  console.log(`Card payment received: PCODE=${PCODE}, Amount=${amount}, TransID=${transID}`);\n\n  // Fulfill the order\n  // ...\n\n  res.status(200).json({ received: true });\n});\n\napp.listen(3000);\n```\n\n**Python (Flask)**\n```python\nfrom flask import Flask, request, jsonify\n\napp = Flask(__name__)\n\n@app.route('/itec/cards/callback', methods=['POST'])\ndef cards_callback():\n    payload = request.get_json()\n    pcode = payload.get('PCODE')\n    amount = payload.get('amount')\n    trans_id = payload.get('transID')\n\n    # Match PCODE to your pending order and fulfill\n    print(f\"Card payment: PCODE={pcode}, Amount={amount}, TransID={trans_id}\")\n\n    return jsonify({\"received\": True}), 200\n\nif __name__ == '__main__':\n    app.run()\n```\n\n**PHP**\n```php\n<?php\n$payload = json_decode(file_get_contents('php://input'), true);\n\n$pcode   = $payload['PCODE']   ?? null;\n$amount  = $payload['amount']  ?? null;\n$transID = $payload['transID'] ?? null;\n\n// Match PCODE to your pending order and fulfill\nerror_log(\"Card payment: PCODE=$pcode, Amount=$amount, TransID=$transID\");\n\nhttp_response_code(200);\necho json_encode([\"received\" => true]);\n?>\n```\n\n---\n\n### Notes\n- Match the `PCODE` in the callback to the one you stored when calling `/generatecode`.\n- Always **respond with HTTP 200** to acknowledge receipt.\n- **Validate the `amount`** matches the expected order amount before fulfilling.\n- Register your callback URL with ITEC support or via your merchant dashboard."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
