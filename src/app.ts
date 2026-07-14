@@ -3,14 +3,12 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import sensible from '@fastify/sensible';
-import swagger from '@fastify/swagger';
-import swaggerUi from '@fastify/swagger-ui';
 
 import { env } from './config/env.js';
 import { logger } from './lib/logger.js';
 import { prisma } from './lib/prisma.js';
 import { registerRoutes } from './routes/index.js';
-import { authPlugin, adminAuthPlugin, rawBodyPlugin, errorHandlerPlugin } from './plugins/index.js';
+import { authPlugin, adminAuthPlugin, rawBodyPlugin, errorHandlerPlugin, swaggerPlugin } from './plugins/index.js';
 import { webhookEventRepository } from './repositories/index.js';
 
 const WEBHOOK_PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -54,28 +52,7 @@ async function buildApp() {
     },
   });
 
-  if (env.ENABLE_SWAGGER) {
-    const servers = [{ url: `http://localhost:${env.PORT}`, description: 'Development server' }];
-    if (env.API_BASE_URL) {
-      servers.unshift({ url: env.API_BASE_URL, description: 'Production server' });
-    }
-
-    await fastify.register(swagger, {
-      openapi: {
-        info: { title: 'Afrisinc Pay API', description: 'Payment Gateway API', version: '1.0.0' },
-        servers,
-        tags: [
-          { name: 'Mobile Payments', description: 'Mobile Money payment operations (Cashin/Cashout)' },
-          { name: 'Webhooks', description: 'Webhook endpoints for payment providers' },
-        ],
-        components: {
-          securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer' } },
-        },
-      },
-    });
-    await fastify.register(swaggerUi, { routePrefix: '/docs' });
-  }
-
+  await fastify.register(swaggerPlugin);
   await fastify.register(rawBodyPlugin);
   await fastify.register(errorHandlerPlugin);
   await fastify.register(authPlugin);
