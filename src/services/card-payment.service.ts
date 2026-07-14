@@ -74,7 +74,17 @@ export class CardPaymentService {
       return this.toCardResult(payment, cardResponse);
     } catch (err) {
       const message = this.extractErrorMessage(err, 'Card payment initiation failed');
-      logger.error({ err, email, amount, orderId }, 'Card payment error');
+      logger.error(
+        {
+          err,
+          email,
+          amount,
+          orderId,
+          errorMessage: message,
+          endpoint: 'https://pay.itecpay.rw/api/pay/apis/pesapal/generatecode',
+        },
+        'Card payment initiation failed - ITEC error',
+      );
       if (err instanceof ItecError) throw err;
       throw new Error(message);
     }
