@@ -22,7 +22,7 @@ export class CardPaymentService {
    * Generates payment code and checkout URL for card payments (Visa, Mastercard)
    */
   async initiateCardPayment(params: CardPaymentRequestParams): Promise<CardPaymentResult> {
-    const { merchant, orderId, amount, email, customerName, description, metadata } = params;
+    const { merchant, orderId, amount, email, currency = 'RWF', customerName, description, metadata } = params;
 
     // Check for existing payment with same orderId (idempotency)
     const existing = await this.mobilePaymentRepository.findByMerchantAndOrder(merchant.id, orderId);
@@ -57,7 +57,7 @@ export class CardPaymentService {
         orderId,
         ref: cardResponse.PCODE,
         amount,
-        currency: 'RWF',
+        currency,
         phoneNumber: email, // Store email in phoneNumber field for compatibility
         type: 'CASHIN', // Card payments use CASHIN type with card metadata
         customerName,

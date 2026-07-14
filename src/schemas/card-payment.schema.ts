@@ -33,7 +33,7 @@ export const initiateCardPaymentSchema: FastifySchema = {
   tags: ['Card Payments'],
   summary: 'POST /card/pay - Initiate Card Payment',
   description:
-    'Initiate a card payment request for Visa or Mastercard via PesaPal (ITEC integration). Generates a unique PCODE and checkout URL that you redirect the customer to for payment completion.\n\nSample request: {"orderId":"card-order-123", "amount":5000, "email":"customer@example.com", "customerName":"John Doe"}',
+    'Initiate a card payment request for Visa or Mastercard via PesaPal (ITEC integration). Generates a unique PCODE and checkout URL that you redirect the customer to for payment completion. Supports multiple currencies (default: RWF).\n\nSample request: {"orderId":"card-order-123", "amount":5000, "email":"customer@example.com", "currency":"RWF", "customerName":"John Doe"}',
   security: bearerAuth,
   body: {
     type: 'object',
@@ -50,13 +50,19 @@ export const initiateCardPaymentSchema: FastifySchema = {
         type: 'integer',
         minimum: 1,
         default: 5000,
-        description: 'Amount in RWF (minimum 1)',
+        description: 'Amount in specified currency (minimum 1). Default currency: RWF',
       },
       email: {
         type: 'string',
         format: 'email',
         default: 'customer@example.com',
         description: 'Customer email address for PesaPal payment receipt',
+      },
+      currency: {
+        type: 'string',
+        default: 'RWF',
+        example: 'RWF',
+        description: 'Currency code (default: RWF). Optional.',
       },
       customerName: {
         type: 'string',
