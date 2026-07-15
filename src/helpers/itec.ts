@@ -113,7 +113,8 @@ export class ItecHelper {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         const errorMsg = (response.data as unknown as Record<string, unknown>)?.message as string | undefined;
         const details = errorMsg ? `: ${errorMsg}` : '';
-        throw new ItecError(`Payment request failed${details}`, response.data.status);
+        const itecResponse = JSON.stringify(response.data);
+        throw new ItecError(`Payment request failed${details} | ITEC: ${itecResponse}`, response.data.status);
       }
 
       return response.data;
