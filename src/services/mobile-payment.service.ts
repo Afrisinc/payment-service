@@ -1,9 +1,9 @@
-import crypto from 'node:crypto';
 import type { MobilePayment, MobilePaymentStatus, MobilePaymentType, Prisma } from '@prisma/client';
 import { getPaypackHelper, PaypackError } from '../helpers/paypack.js';
 import { getItecHelper, ItecError } from '../helpers/itec.js';
 import { MobilePaymentRepository } from '../repositories/mobile-payment.repository.js';
 import { logger } from '../lib/logger.js';
+import { merchantWebhookService } from './merchant-webhook.service.js';
 import type {
   CashinRequestParams,
   CashoutRequestParams,
@@ -374,61 +374,45 @@ export class MobilePaymentService {
 
       logger.info({ paymentId: payment.id, status, provider: payment.provider }, 'Webhook processed successfully');
 
-      // Notify merchant if webhook is configured
-      if (payment.merchant.webhookUrl && payment.merchant.webhookSecret) {
-        await this.notifyMerchant(payment, eventKind);
-      }
+      await this.notifyMerchantWebhook(payment, status);
     } catch (err) {
       logger.error({ err, ref: transactionRef, eventKind }, 'Error processing webhook');
       throw err;
     }
   }
 
-  /**
-   * Notify merchant about payment status change
-   */
-  private async notifyMerchant(payment: MobilePaymentWithMerchant, eventType: string): Promise<void> {
-    const { webhookUrl, webhookSecret } = payment.merchant;
-    if (!webhookUrl || !webhookSecret) return;
-
-    const payload = {
-      event: eventType,
-      merchantId: payment.merchantId,
-      paymentId: payment.id,
-      ref: payment.ref,
-      orderId: payment.orderId,
-      amount: payment.amount,
-      currency: payment.currency,
-      phoneNumber: payment.phoneNumber,
-      type: payment.type,
-      status: payment.status,
-      fee: payment.fee,
-      provider: payment.provider,
-      processedAt: payment.processedAt,
-    };
-
-    const body = JSON.stringify(payload);
-    const signature = 'sha256=' + crypto.createHmac('sha256', webhookSecret).update(body).digest('hex');
-
+  private async notifyMerchantWebhook(payment: MobilePaymentWithMerchant, status: MobilePaymentStatus): Promise<void> {
     try {
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-webhook-signature': signature,
-        },
-        body,
-        signal: AbortSignal.timeout(5000),
-      });
+      const eventTypeMap: Record<MobilePaymentStatus, 'payment.succeeded' | 'payment.failed'> = {
+        SUCCESSFUL: 'payment.succeeded',
+        FAILED: 'payment.failed',
+        PROCESSING: 'payment.succeeded',
+        PENDING: 'payment.succeeded',
+      };
 
-      if (!response.ok) {
-        logger.warn(
-          { status: response.status, paymentId: payment.id },
-          'Mobile webhook delivery returned non-OK status',
-        );
-      }
+      const statusMap: Record<MobilePaymentStatus, 'SUCCEEDED' | 'FAILED' | 'PENDING'> = {
+        SUCCESSFUL: 'SUCCEEDED',
+        FAILED: 'FAILED',
+        PROCESSING: 'PENDING',
+        PENDING: 'PENDING',
+      };
+
+      const eventType = eventTypeMap[status];
+      const mappedStatus = statusMap[status];
+
+      const adaptedPayment = {
+        id: payment.id,
+        orderId: payment.orderId,
+        amount: payment.amount,
+        currency: payment.currency,
+        status: mappedStatus,
+        metadata: payment.metadata,
+        merchant: payment.merchant,
+      } as Parameters<typeof merchantWebhookService.notifyPaymentEvent>[0];
+
+      await merchantWebhookService.notifyPaymentEvent(adaptedPayment, eventType);
     } catch (err) {
-      logger.warn({ err, paymentId: payment.id }, 'Mobile webhook delivery failed');
+      logger.error({ err, paymentId: payment.id }, 'Failed to queue merchant webhook notification');
     }
   }
 
