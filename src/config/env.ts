@@ -26,6 +26,7 @@ const envSchema = z.object({
 
   FRONTEND_URL: z.string().url().default('https://afrisinc.com'),
   API_BASE_URL: z.string().url().optional(),
+  WEBHOOK_URL: z.string().url().optional(),
 
   ENABLE_SWAGGER: z
     .string()

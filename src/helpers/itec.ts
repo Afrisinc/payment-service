@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { AxiosInstance } from 'axios';
 import requestHelper from '../utils/requestHelper.js';
+import { removeCountryCode } from '../utils/phone.js';
 import type {
   ItecConfig,
   ItecPaymentRequest,
@@ -98,9 +99,10 @@ export class ItecHelper {
 
       const payload = {
         amount: params.amount,
-        phone: normalizedPhone,
-        key: this.getApiKeyForMethod(provider), // Use provider-specific key (mtn or airtel)
+        phone: removeCountryCode(params.phone),
+        key: this.getApiKeyForMethod(provider),
         req_ref: params.reqRef,
+        ...(env.WEBHOOK_URL && { callback_url: env.WEBHOOK_URL }),
         ...(params.note && { note: params.note }),
         ...(params.message && { message: params.message }),
       };
@@ -169,8 +171,8 @@ export class ItecHelper {
 
       const payload = {
         amount: params.amount,
-        phone: normalizedPhone,
-        key: this.getApiKeyForMethod(provider), // Use provider-specific key (mtn or airtel)
+        phone: removeCountryCode(params.phone),
+        key: this.getApiKeyForMethod(provider),
       };
 
       const response = await this.api.post<ItecCashoutResponse>(`${this.baseUrl}/api/transfer`, payload);
