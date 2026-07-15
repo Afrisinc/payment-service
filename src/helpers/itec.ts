@@ -113,7 +113,7 @@ export class ItecHelper {
         normalizedPhone,
         phoneAfterRemoval: removeCountryCode(params.phone),
         endpoint: `${this.baseUrl}/api2/pay`,
-        payload,
+        payload: { ...payload, key: '***REDACTED***' },
       });
 
       const response = await this.api.post<ItecPaymentResponse>(`${this.baseUrl}/api2/pay`, payload);
@@ -195,7 +195,7 @@ export class ItecHelper {
         normalizedPhone,
         phoneAfterRemoval: removeCountryCode(params.phone),
         endpoint: `${this.baseUrl}/api/transfer`,
-        payload,
+        payload: { ...payload, key: '***REDACTED***' },
       });
 
       const response = await this.api.post<ItecCashoutResponse>(`${this.baseUrl}/api/transfer`, payload);
@@ -269,7 +269,7 @@ export class ItecHelper {
       // eslint-disable-next-line no-console
       console.log('[ITEC Card Payment Request]', {
         endpoint: `${this.baseUrl}/api/pay/apis/pesapal/generatecode`,
-        payload,
+        payload: { ...payload, key: '***REDACTED***' },
       });
 
       const response = await this.api.post<ItecCardPaymentResponse>(
