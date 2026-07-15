@@ -107,6 +107,15 @@ export class ItecHelper {
         ...(params.message && { message: params.message }),
       };
 
+      // eslint-disable-next-line no-console
+      console.log('[ITEC Payment Request]', {
+        provider,
+        normalizedPhone,
+        phoneAfterRemoval: removeCountryCode(params.phone),
+        endpoint: `${this.baseUrl}/api2/pay`,
+        payload,
+      });
+
       const response = await this.api.post<ItecPaymentResponse>(`${this.baseUrl}/api2/pay`, payload);
 
       if (response.data.status !== 200) {
@@ -180,6 +189,15 @@ export class ItecHelper {
         key: this.getApiKeyForMethod(provider),
       };
 
+      // eslint-disable-next-line no-console
+      console.log('[ITEC Cashout Request]', {
+        provider,
+        normalizedPhone,
+        phoneAfterRemoval: removeCountryCode(params.phone),
+        endpoint: `${this.baseUrl}/api/transfer`,
+        payload,
+      });
+
       const response = await this.api.post<ItecCashoutResponse>(`${this.baseUrl}/api/transfer`, payload);
 
       if (response.data.status !== 200) {
@@ -247,6 +265,12 @@ export class ItecHelper {
         email: params.email,
         key: this.getApiKeyForMethod('card'), // Use Card payment specific key
       };
+
+      // eslint-disable-next-line no-console
+      console.log('[ITEC Card Payment Request]', {
+        endpoint: `${this.baseUrl}/api/pay/apis/pesapal/generatecode`,
+        payload,
+      });
 
       const response = await this.api.post<ItecCardPaymentResponse>(
         `${this.baseUrl}/api/pay/apis/pesapal/generatecode`,
