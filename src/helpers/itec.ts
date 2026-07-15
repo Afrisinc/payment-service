@@ -110,13 +110,17 @@ export class ItecHelper {
       const response = await this.api.post<ItecPaymentResponse>(`${this.baseUrl}/api2/pay`, payload);
 
       if (response.data.status !== 200) {
-        throw new ItecError(response.data.data?.status || 'Payment request failed', response.data.status);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        const errorMsg = (response.data as unknown as Record<string, unknown>)?.message as string | undefined;
+        const details = errorMsg ? `: ${errorMsg}` : '';
+        throw new ItecError(`Payment request failed${details}`, response.data.status);
       }
 
       return response.data;
     } catch (error) {
       if (error instanceof ItecError) throw error;
-      throw new ItecError(`V2 Payment request failed: ${this.getErrorMessage(error)}`, 500);
+      const message = this.getErrorMessage(error);
+      throw new ItecError(`V2 Payment request failed: ${message}`, 500);
     }
   }
 
