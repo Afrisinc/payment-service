@@ -25,6 +25,7 @@ const envSchema = z.object({
   ITEC_BASE_URL: z.string().url().default('https://pay.itecpay.rw'),
 
   FRONTEND_URL: z.string().url().default('https://afrisinc.com'),
+  CORS_ALLOWED_ORIGINS: z.string().optional(), // Comma-separated list of allowed origins
   API_BASE_URL: z.string().url().optional(),
   WEBHOOK_URL: z.string().url().optional(),
 

@@ -30,8 +30,14 @@ async function buildApp() {
 
   await fastify.register(sensible);
 
+  // Parse CORS allowed origins from env (comma-separated)
+  let corsOrigin: string | boolean | string[] = env.NODE_ENV === 'production' ? env.FRONTEND_URL : true;
+  if (env.CORS_ALLOWED_ORIGINS) {
+    corsOrigin = env.CORS_ALLOWED_ORIGINS.split(',').map((origin) => origin.trim());
+  }
+
   await fastify.register(cors, {
-    origin: env.NODE_ENV === 'production' ? env.FRONTEND_URL : true,
+    origin: corsOrigin,
     credentials: true,
   });
 
