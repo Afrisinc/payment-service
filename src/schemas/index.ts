@@ -26,3 +26,11 @@ export {
   listCardPaymentsSchema,
   cardWebhookSchema,
 } from './card-payment.schema.js';
+
+export {
+  listMerchantsSchema,
+  listAdminPaymentsSchema,
+  dashboardMetricsSchema,
+  dashboardChartDataSchema,
+  listWebhookDeliveriesSchema,
+} from './admin.schema.js';

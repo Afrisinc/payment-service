@@ -5,5 +5,6 @@ export { merchantWebhookService } from './merchant-webhook.service.js';
 export type { WebhookEventType, PaymentWithWebhookMerchant } from './merchant-webhook.service.js';
 export { MobilePaymentService } from './mobile-payment.service.js';
 export { CardPaymentService } from './card-payment.service.js';
+export { adminService, AdminService } from './admin.service.js';
 
 // Types are exported from src/types/index.ts
