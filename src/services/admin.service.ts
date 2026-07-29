@@ -1,5 +1,9 @@
 import { adminRepository } from '../repositories/admin.repository.js';
-import type { ListMerchantsParams, ListPaymentsParams } from '../repositories/admin.repository.js';
+import type {
+  ListMerchantsParams,
+  ListPaymentsParams,
+  ListMobilePaymentsParams,
+} from '../repositories/admin.repository.js';
 
 export class AdminService {
   async listMerchants(params: ListMerchantsParams) {
@@ -31,6 +35,18 @@ export class AdminService {
 
   async getWebhookDelivery(deliveryId: string) {
     return adminRepository.getWebhookDelivery(deliveryId);
+  }
+
+  async listMobilePayments(params: ListMobilePaymentsParams) {
+    return adminRepository.listMobilePayments(params);
+  }
+
+  async getMobilePaymentById(paymentId: string) {
+    return adminRepository.getMobilePaymentById(paymentId);
+  }
+
+  async getMobilePaymentStats(dateFrom?: Date, dateTo?: Date) {
+    return adminRepository.getMobilePaymentStats(dateFrom, dateTo);
   }
 }
 

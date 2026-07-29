@@ -72,5 +72,30 @@ export function adminRoutes(fastify: FastifyInstance, _opts: unknown, done: () =
     asyncWrapper(adminController.getWebhookDelivery.bind(adminController)),
   );
 
+  // Mobile payment admin endpoints
+  fastify.get(
+    '/mobile-payments',
+    {
+      preHandler: [fastify.authenticateAdmin],
+    },
+    asyncWrapper(adminController.listMobilePayments.bind(adminController)),
+  );
+
+  fastify.get(
+    '/mobile-payments/stats',
+    {
+      preHandler: [fastify.authenticateAdmin],
+    },
+    asyncWrapper(adminController.getMobilePaymentStats.bind(adminController)),
+  );
+
+  fastify.get(
+    '/mobile-payments/:id',
+    {
+      preHandler: [fastify.authenticateAdmin],
+    },
+    asyncWrapper(adminController.getMobilePaymentById.bind(adminController)),
+  );
+
   done();
 }

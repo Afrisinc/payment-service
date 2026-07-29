@@ -26,6 +26,22 @@ export interface ListPaymentsParams {
   sortOrder: 'asc' | 'desc';
 }
 
+export interface ListMobilePaymentsParams {
+  page: number;
+  limit: number;
+  status?: string;
+  type?: 'CASHIN' | 'CASHOUT';
+  provider?: string;
+  merchantId?: string;
+  dateFrom?: Date;
+  dateTo?: Date;
+  minAmount?: number;
+  maxAmount?: number;
+  search?: string;
+  sortBy: 'createdAt' | 'amount' | 'status';
+  sortOrder: 'asc' | 'desc';
+}
+
 export class AdminRepository {
   async listMerchants(params: ListMerchantsParams) {
     const skip = (params.page - 1) * params.limit;
@@ -528,6 +544,173 @@ export class AdminRepository {
           deliveredAt: delivery.deliveredAt ? delivery.deliveredAt.toISOString() : null,
         }
       : null;
+  }
+
+  async listMobilePayments(params: ListMobilePaymentsParams) {
+    const skip = (params.page - 1) * params.limit;
+
+    const where: any = {};
+    if (params.status) where.status = params.status;
+    if (params.type) where.type = params.type;
+    if (params.provider) where.provider = params.provider;
+    if (params.merchantId) where.merchantId = params.merchantId;
+    if (params.dateFrom) {
+      where.createdAt = { gte: params.dateFrom };
+    }
+    if (params.dateTo) {
+      if (where.createdAt) {
+        where.createdAt.lte = params.dateTo;
+      } else {
+        where.createdAt = { lte: params.dateTo };
+      }
+    }
+    if (params.minAmount) {
+      where.amount = { gte: params.minAmount };
+    }
+    if (params.maxAmount) {
+      if (where.amount) {
+        where.amount.lte = params.maxAmount;
+      } else {
+        where.amount = { lte: params.maxAmount };
+      }
+    }
+    if (params.search) {
+      where.OR = [
+        { ref: { contains: params.search, mode: 'insensitive' } },
+        { orderId: { contains: params.search, mode: 'insensitive' } },
+        { phoneNumber: { contains: params.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [payments, total] = await prisma.$transaction([
+      prisma.mobilePayment.findMany({
+        where,
+        include: {
+          merchant: {
+            select: { id: true, name: true },
+          },
+        },
+        orderBy: { [params.sortBy]: params.sortOrder },
+        skip,
+        take: params.limit,
+      }),
+      prisma.mobilePayment.count({ where }),
+    ]);
+
+    return {
+      data: payments.map((p) => ({
+        id: p.id,
+        ref: p.ref,
+        orderId: p.orderId,
+        merchantId: p.merchantId,
+        merchantName: p.merchant.name,
+        amount: p.amount,
+        currency: p.currency,
+        status: p.status,
+        type: p.type,
+        provider: p.provider,
+        phoneNumber: p.phoneNumber,
+        customerName: p.customerName,
+        fee: p.fee,
+        failureReason: p.failureReason,
+        createdAt: p.createdAt.toISOString(),
+        processedAt: p.processedAt ? p.processedAt.toISOString() : null,
+      })),
+      pagination: {
+        total,
+        page: params.page,
+        pageSize: params.limit,
+        hasMore: skip + params.limit < total,
+      },
+    };
+  }
+
+  async getMobilePaymentById(paymentId: string) {
+    const payment = await prisma.mobilePayment.findUnique({
+      where: { id: paymentId },
+      include: {
+        merchant: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+    });
+
+    if (!payment) return null;
+
+    return {
+      id: payment.id,
+      ref: payment.ref,
+      orderId: payment.orderId,
+      merchantId: payment.merchantId,
+      merchantName: payment.merchant.name,
+      merchantEmail: payment.merchant.email,
+      amount: payment.amount,
+      currency: payment.currency,
+      status: payment.status,
+      type: payment.type,
+      provider: payment.provider,
+      phoneNumber: payment.phoneNumber,
+      customerName: payment.customerName,
+      description: payment.description,
+      fee: payment.fee,
+      failureReason: payment.failureReason,
+      metadata: payment.metadata,
+      createdAt: payment.createdAt.toISOString(),
+      processedAt: payment.processedAt ? payment.processedAt.toISOString() : null,
+    };
+  }
+
+  async getMobilePaymentStats(dateFrom?: Date, dateTo?: Date) {
+    const where: any = {};
+    if (dateFrom) where.createdAt = { gte: dateFrom };
+    if (dateTo) {
+      if (where.createdAt) {
+        where.createdAt.lte = dateTo;
+      } else {
+        where.createdAt = { lte: dateTo };
+      }
+    }
+
+    const payments = await prisma.mobilePayment.findMany({ where });
+
+    const totalCount = payments.length;
+    const cashinCount = payments.filter((p) => p.type === 'CASHIN').length;
+    const cashoutCount = payments.filter((p) => p.type === 'CASHOUT').length;
+    const successCount = payments.filter((p) => p.status === 'SUCCESSFUL').length;
+    const failedCount = payments.filter((p) => p.status === 'FAILED').length;
+    const pendingCount = payments.filter((p) => p.status === 'PENDING' || p.status === 'PROCESSING').length;
+
+    const totalVolume = payments.reduce((sum, p) => sum + p.amount, 0);
+    const cashinVolume = payments.filter((p) => p.type === 'CASHIN').reduce((sum, p) => sum + p.amount, 0);
+    const cashoutVolume = payments.filter((p) => p.type === 'CASHOUT').reduce((sum, p) => sum + p.amount, 0);
+    const totalFees = payments.reduce((sum, p) => sum + (p.fee || 0), 0);
+
+    const successRate = totalCount > 0 ? parseFloat(((successCount / totalCount) * 100).toFixed(2)) : 0;
+
+    const providerStats: Record<string, { count: number; volume: number }> = {};
+    for (const p of payments) {
+      const provider = p.provider || 'Unknown';
+      if (!providerStats[provider]) {
+        providerStats[provider] = { count: 0, volume: 0 };
+      }
+      providerStats[provider].count += 1;
+      providerStats[provider].volume += p.amount;
+    }
+
+    return {
+      totalCount,
+      cashinCount,
+      cashoutCount,
+      successCount,
+      failedCount,
+      pendingCount,
+      totalVolume,
+      cashinVolume,
+      cashoutVolume,
+      totalFees,
+      successRate,
+      providerStats,
+    };
   }
 }
 
