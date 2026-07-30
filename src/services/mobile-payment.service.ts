@@ -3,6 +3,7 @@ import { getPaypackHelper, PaypackError } from '../helpers/paypack.js';
 import { getItecHelper, ItecError } from '../helpers/itec.js';
 import { MobilePaymentRepository } from '../repositories/mobile-payment.repository.js';
 import { logger } from '../lib/logger.js';
+import { retry } from '../lib/retry.js';
 import { merchantWebhookService } from './merchant-webhook.service.js';
 import type {
   CashinRequestParams,
@@ -275,16 +276,14 @@ export class MobilePaymentService {
 
       // ITEC V2 status check (requires req_ref in metadata)
       if (provider === 'itec' && payment?.metadata && typeof payment.metadata === 'object') {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
         const metadata = payment.metadata as Record<string, unknown>;
         const reqRef = metadata.req_ref;
 
         if (typeof reqRef === 'string') {
           const itec = getItecHelper();
-          const statusCheck = await itec.checkStatus(reqRef);
+          const statusCheck = await retry(() => itec.checkStatus(reqRef), 3, 'ITEC status check');
           const mappedStatus = this.mapItecStatusToStandard(statusCheck.data.status);
 
-          // UPDATE: Automatically update database with current status from provider
           await this.mobilePaymentRepository.updateByRef(ref, {
             status: mappedStatus,
             provider: 'itec',
@@ -300,10 +299,9 @@ export class MobilePaymentService {
 
       // Fallback to Paypack for other providers
       const paypack = getPaypackHelper();
-      const transaction = await paypack.findTransaction(ref);
+      const transaction = await retry(() => paypack.findTransaction(ref), 3, 'Paypack transaction lookup');
       const mappedStatus = this.mapStatus(transaction.status);
 
-      // UPDATE: Automatically update database with current status from Paypack
       await this.mobilePaymentRepository.updateByRef(ref, {
         status: mappedStatus,
         fee: transaction.fee,

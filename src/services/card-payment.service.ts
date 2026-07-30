@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 import { getItecHelper, ItecError } from '../helpers/itec.js';
 import { MobilePaymentRepository } from '../repositories/mobile-payment.repository.js';
 import { logger } from '../lib/logger.js';
+import { retry } from '../lib/retry.js';
 import type {
   CardPaymentRequestParams,
   CardPaymentResult,
@@ -146,7 +147,7 @@ export class CardPaymentService {
 
     try {
       const itec = getItecHelper();
-      const statusCheck = await itec.checkStatus(payment.ref);
+      const statusCheck = await retry(() => itec.checkStatus(payment.ref), 3, 'Card payment status check');
       const mappedStatus = this.mapCardStatus(statusCheck.data.status);
 
       const updated = await this.mobilePaymentRepository.updateByRef(payment.ref, {
@@ -314,11 +315,10 @@ export class CardPaymentService {
     payment: Omit<MobilePaymentWithMerchant, 'merchant'>,
     itecResponse?: ItecCardPaymentResponse,
   ): CardPaymentResult {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     const metadata = (payment.metadata as Record<string, unknown> | null) ?? null;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+
     const checkoutUrl: string = itecResponse?.link || (metadata?.checkout_link as string) || '';
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+
     const validUntil: string = itecResponse?.valid_until || (metadata?.valid_until as string) || '';
 
     return {

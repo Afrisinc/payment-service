@@ -5,6 +5,7 @@ import type {
   ListMobilePaymentsParams,
 } from '../repositories/admin.repository.js';
 import { MobilePaymentRepository } from '../repositories/mobile-payment.repository.js';
+import { paymentRepository } from '../repositories/payment.repository.js';
 import { MobilePaymentService } from './mobile-payment.service.js';
 import { CardPaymentService } from './card-payment.service.js';
 
@@ -15,7 +16,7 @@ const cardPaymentService = new CardPaymentService();
 export interface RefreshedPaymentStatus {
   id: string;
   ref: string;
-  type: 'card' | 'mobile';
+  type: 'card' | 'mobile' | 'payment';
   merchantId: string;
   status: string;
   provider: string | null;
@@ -66,24 +67,41 @@ export class AdminService {
   }
 
   async refreshPaymentStatus(paymentId: string): Promise<RefreshedPaymentStatus | null> {
-    const payment = await mobilePaymentRepository.findById(paymentId);
+    let payment: any = await mobilePaymentRepository.findById(paymentId);
+    let isMobilePayment = true;
+
+    if (!payment) {
+      payment = await paymentRepository.findById(paymentId);
+      isMobilePayment = false;
+    }
+
     if (!payment) return null;
 
     const metadata = (payment.metadata as Record<string, unknown> | null) ?? {};
-    const isCard = metadata.payment_type === 'card';
+    const isCard = metadata.payment_type === 'card' || payment.type === 'CARD';
 
-    const result = isCard
-      ? await cardPaymentService.getCardPaymentStatus(payment.ref, payment.merchantId)
-      : await mobilePaymentService.getPaymentStatusByRef(payment.ref, payment.merchantId);
+    let result = null;
+    if (isMobilePayment) {
+      result = isCard
+        ? await cardPaymentService.getCardPaymentStatus(payment.ref, payment.merchantId)
+        : await mobilePaymentService.getPaymentStatusByRef(payment.ref, payment.merchantId);
+    }
+
+    let type: RefreshedPaymentStatus['type'];
+    if (!isMobilePayment) {
+      type = 'payment';
+    } else {
+      type = isCard ? 'card' : 'mobile';
+    }
 
     return {
       id: payment.id,
-      ref: payment.ref,
-      type: isCard ? 'card' : 'mobile',
+      ref: payment.ref || payment.orderId,
+      type,
       merchantId: payment.merchantId,
       status: result?.status ?? payment.status,
-      provider: result?.provider ?? payment.provider,
-    };
+      provider: result?.provider ?? payment.provider ?? null,
+    } as RefreshedPaymentStatus;
   }
 }
 
