@@ -315,11 +315,10 @@ export class CardPaymentService {
     payment: Omit<MobilePaymentWithMerchant, 'merchant'>,
     itecResponse?: ItecCardPaymentResponse,
   ): CardPaymentResult {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     const metadata = (payment.metadata as Record<string, unknown> | null) ?? null;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+
     const checkoutUrl: string = itecResponse?.link || (metadata?.checkout_link as string) || '';
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+
     const validUntil: string = itecResponse?.valid_until || (metadata?.valid_until as string) || '';
 
     return {

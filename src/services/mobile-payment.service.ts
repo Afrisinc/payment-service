@@ -276,7 +276,6 @@ export class MobilePaymentService {
 
       // ITEC V2 status check (requires req_ref in metadata)
       if (provider === 'itec' && payment?.metadata && typeof payment.metadata === 'object') {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
         const metadata = payment.metadata as Record<string, unknown>;
         const reqRef = metadata.req_ref;
 

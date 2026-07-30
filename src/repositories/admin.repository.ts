@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
 import { prismaRead } from '../lib/prisma.js';
 
 export interface ListMerchantsParams {
@@ -227,17 +226,16 @@ export class AdminRepository {
     const allPayments = payments
       .sort((a, b) => {
         if (params.sortOrder === 'asc') {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
           return a[params.sortBy] > b[params.sortBy] ? 1 : -1;
         }
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
         return a[params.sortBy] < b[params.sortBy] ? 1 : -1;
       })
       .slice(skip, skip + params.limit)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return,@typescript-eslint/no-unsafe-call
+
       .map((p) => ({
         ...p,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+
         createdAt: p.createdAt instanceof Date ? p.createdAt.toISOString() : p.createdAt,
       }));
 

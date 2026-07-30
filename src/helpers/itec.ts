@@ -107,7 +107,6 @@ export class ItecHelper {
         ...(params.message && { message: params.message }),
       };
 
-      // eslint-disable-next-line no-console
       console.log('[ITEC Payment Request]', {
         provider,
         normalizedPhone,
@@ -119,7 +118,6 @@ export class ItecHelper {
       const response = await this.api.post<ItecPaymentResponse>(`${this.baseUrl}/api2/pay`, payload);
 
       if (response.data.status !== 200) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         const errorMsg = (response.data as unknown as Record<string, unknown>)?.message as string | undefined;
         const details = errorMsg ? `: ${errorMsg}` : '';
         const itecResponse = JSON.stringify(response.data);
@@ -189,7 +187,6 @@ export class ItecHelper {
         key: this.getApiKeyForMethod(provider),
       };
 
-      // eslint-disable-next-line no-console
       console.log('[ITEC Cashout Request]', {
         provider,
         normalizedPhone,
@@ -266,7 +263,6 @@ export class ItecHelper {
         key: this.getApiKeyForMethod('card'), // Use Card payment specific key
       };
 
-      // eslint-disable-next-line no-console
       console.log('[ITEC Card Payment Request]', {
         endpoint: `${this.baseUrl}/api/pay/apis/pesapal/generatecode`,
         payload: { ...payload, key: '***REDACTED***' },
@@ -278,7 +274,6 @@ export class ItecHelper {
       );
 
       if (response.data.status !== 200) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         const errorMsg = (response.data as unknown as Record<string, unknown>)?.message as string | undefined;
         const details = errorMsg ? `: ${errorMsg}` : '';
         throw new ItecError(
