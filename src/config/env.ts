@@ -9,8 +9,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   DATABASE_READ_URL: z.string().min(1).optional(),
 
-  STRIPE_SECRET_KEY: z.string().min(1),
-  STRIPE_WEBHOOK_SECRET: z.string().min(1),
+  STRIPE_SECRET_KEY: z.string().min(1).optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
 
   // Paypack Mobile Money
   PAYPACK_CLIENT_ID: z.string().min(1),
