@@ -3,7 +3,6 @@ import { paymentRoutes } from './payment.routes.js';
 import { webhookRoutes } from './webhook.routes.js';
 import { healthRoutes } from './health.routes.js';
 import { merchantRoutes } from './merchant.routes.js';
-import { subscriptionRoutes } from './subscription.routes.js';
 import { mobilePaymentRoutes } from './mobile-payment.routes.js';
 import { cardPaymentRoutes } from './card-payment.routes.js';
 import { adminRoutes } from './admin.routes.js';
@@ -16,5 +15,4 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await fastify.register(webhookRoutes, { prefix: '/webhooks' });
   await fastify.register(merchantRoutes, { prefix: '/admin/merchants' });
   await fastify.register(adminRoutes, { prefix: '/admin' });
-  await fastify.register(subscriptionRoutes, { prefix: '/subscriptions' });
 }
