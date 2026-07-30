@@ -33,4 +33,5 @@ export {
   dashboardMetricsSchema,
   dashboardChartDataSchema,
   listWebhookDeliveriesSchema,
+  refreshPaymentStatusSchema,
 } from './admin.schema.js';

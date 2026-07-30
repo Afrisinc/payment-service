@@ -42,6 +42,11 @@ export function mobilePaymentRoutes(fastify: FastifyInstance, _opts: unknown, do
     handler: asyncWrapper(mobilePaymentController.getAccountInfo.bind(mobilePaymentController)),
   });
 
+  fastify.get('/ref/:ref/status', {
+    preHandler: [fastify.authenticate],
+    handler: asyncWrapper(mobilePaymentController.getPaymentStatus.bind(mobilePaymentController)),
+  });
+
   // Get payment by Paypack reference (must be before /:id to avoid conflict)
   fastify.get('/ref/:ref', {
     schema: getMobilePaymentByRefSchema,

@@ -367,6 +367,40 @@ export const dashboardChartDataSchema: FastifySchema = {
   },
 };
 
+export const refreshPaymentStatusSchema: FastifySchema = {
+  tags: ['Admin - Payments'],
+  summary: 'Refresh a payment status by polling its provider (card or mobile) and syncing the DB',
+  security: bearerAuth,
+  params: {
+    type: 'object',
+    required: ['id'],
+    properties: {
+      id: { type: 'string', description: 'Payment ID' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        resp_code: { type: 'integer' },
+        resp_msg: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            ref: { type: 'string' },
+            type: { type: 'string', enum: ['card', 'mobile'] },
+            merchantId: { type: 'string', format: 'uuid' },
+            status: { type: 'string' },
+            provider: { type: ['string', 'null'] },
+          },
+        },
+      },
+    },
+  },
+};
+
 export const listWebhookDeliveriesSchema: FastifySchema = {
   tags: ['Admin - Webhooks'],
   summary: 'List webhook delivery logs',

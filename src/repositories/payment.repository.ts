@@ -1,10 +1,10 @@
 import type { Payment, PaymentStatus, Prisma } from '@prisma/client';
-import { prisma } from '../lib/prisma.js';
+import { prismaRead, prismaWrite } from '../lib/prisma.js';
 import type { CreatePaymentData, PaymentPage } from '../types/index.js';
 
 export class PaymentRepository {
   async createWithFee(data: CreatePaymentData): Promise<Payment> {
-    return prisma.$transaction(async (tx) => {
+    return prismaWrite.$transaction(async (tx) => {
       const payment = await tx.payment.create({
         data: {
           merchantId: data.merchantId,
@@ -33,50 +33,50 @@ export class PaymentRepository {
   }
 
   async findById(id: string): Promise<Payment | null> {
-    return prisma.payment.findUnique({ where: { id } });
+    return prismaRead.payment.findUnique({ where: { id } });
   }
 
   async findByIdAndMerchant(id: string, merchantId: string): Promise<Payment | null> {
-    return prisma.payment.findFirst({ where: { id, merchantId } });
+    return prismaRead.payment.findFirst({ where: { id, merchantId } });
   }
 
   async findByMerchantAndOrder(merchantId: string, orderId: string): Promise<Payment | null> {
-    return prisma.payment.findUnique({
+    return prismaWrite.payment.findUnique({
       where: { merchantId_orderId: { merchantId, orderId } },
     });
   }
 
   async findByStripeSessionId(stripeSessionId: string): Promise<Payment | null> {
-    return prisma.payment.findFirst({ where: { stripeSessionId } });
+    return prismaWrite.payment.findFirst({ where: { stripeSessionId } });
   }
 
   async findByStripeIntentId(stripeIntentId: string): Promise<Payment | null> {
-    return prisma.payment.findFirst({ where: { stripeIntentId } });
+    return prismaWrite.payment.findFirst({ where: { stripeIntentId } });
   }
 
   async listByMerchant(merchantId: string, page: number, limit: number, status?: PaymentStatus): Promise<PaymentPage> {
     const where: Prisma.PaymentWhereInput = { merchantId, ...(status && { status }) };
     const [items, total] = await Promise.all([
-      prisma.payment.findMany({
+      prismaRead.payment.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         take: limit,
         skip: (page - 1) * limit,
       }),
-      prisma.payment.count({ where }),
+      prismaRead.payment.count({ where }),
     ]);
     return { items, total };
   }
 
   async updateStatus(id: string, status: PaymentStatus): Promise<Payment> {
-    return prisma.payment.update({ where: { id }, data: { status } });
+    return prismaWrite.payment.update({ where: { id }, data: { status } });
   }
 
   async updateStatusWithMerchant(
     id: string,
     status: PaymentStatus,
   ): Promise<(Payment & { merchant: { id: string; webhookUrl: string | null; webhookSecret: string | null } }) | null> {
-    return prisma.payment.update({
+    return prismaWrite.payment.update({
       where: { id },
       data: { status },
       include: {

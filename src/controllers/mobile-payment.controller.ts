@@ -105,6 +105,17 @@ export class MobilePaymentController {
     return ResponseHandler.success(reply, 1000, 'Payment retrieved successfully', payment);
   }
 
+  async getPaymentStatus(request: MerchantRequest, reply: FastifyReply): Promise<void> {
+    const params = request.params as { ref: string };
+    const result = await this.mobilePaymentService.getPaymentStatusByRef(params.ref, request.merchant.id);
+
+    if (!result) {
+      return ResponseHandler.error(reply, 'Payment not found', 1004, 404);
+    }
+
+    return ResponseHandler.success(reply, 1000, 'Payment status retrieved and updated', result);
+  }
+
   /**
    * List payments
    */

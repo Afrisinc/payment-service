@@ -1,5 +1,25 @@
 import { adminRepository } from '../repositories/admin.repository.js';
-import type { ListMerchantsParams, ListPaymentsParams } from '../repositories/admin.repository.js';
+import type {
+  ListMerchantsParams,
+  ListPaymentsParams,
+  ListMobilePaymentsParams,
+} from '../repositories/admin.repository.js';
+import { MobilePaymentRepository } from '../repositories/mobile-payment.repository.js';
+import { MobilePaymentService } from './mobile-payment.service.js';
+import { CardPaymentService } from './card-payment.service.js';
+
+const mobilePaymentRepository = new MobilePaymentRepository();
+const mobilePaymentService = new MobilePaymentService();
+const cardPaymentService = new CardPaymentService();
+
+export interface RefreshedPaymentStatus {
+  id: string;
+  ref: string;
+  type: 'card' | 'mobile';
+  merchantId: string;
+  status: string;
+  provider: string | null;
+}
 
 export class AdminService {
   async listMerchants(params: ListMerchantsParams) {
@@ -31,6 +51,39 @@ export class AdminService {
 
   async getWebhookDelivery(deliveryId: string) {
     return adminRepository.getWebhookDelivery(deliveryId);
+  }
+
+  async listMobilePayments(params: ListMobilePaymentsParams) {
+    return adminRepository.listMobilePayments(params);
+  }
+
+  async getMobilePaymentById(paymentId: string) {
+    return adminRepository.getMobilePaymentById(paymentId);
+  }
+
+  async getMobilePaymentStats(dateFrom?: Date, dateTo?: Date) {
+    return adminRepository.getMobilePaymentStats(dateFrom, dateTo);
+  }
+
+  async refreshPaymentStatus(paymentId: string): Promise<RefreshedPaymentStatus | null> {
+    const payment = await mobilePaymentRepository.findById(paymentId);
+    if (!payment) return null;
+
+    const metadata = (payment.metadata as Record<string, unknown> | null) ?? {};
+    const isCard = metadata.payment_type === 'card';
+
+    const result = isCard
+      ? await cardPaymentService.getCardPaymentStatus(payment.ref, payment.merchantId)
+      : await mobilePaymentService.getPaymentStatusByRef(payment.ref, payment.merchantId);
+
+    return {
+      id: payment.id,
+      ref: payment.ref,
+      type: isCard ? 'card' : 'mobile',
+      merchantId: payment.merchantId,
+      status: result?.status ?? payment.status,
+      provider: result?.provider ?? payment.provider,
+    };
   }
 }
 

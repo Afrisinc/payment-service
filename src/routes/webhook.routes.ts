@@ -7,7 +7,7 @@ import { unifiedWebhookSchema } from '../schemas/unified-webhook.schema.js';
 export function webhookRoutes(fastify: FastifyInstance, _opts: unknown, done: () => void): void {
   const unifiedController = new UnifiedWebhookController();
 
-  fastify.post('/stripe', {
+  fastify.post('/stripe_old', {
     config: {
       rawBody: true,
     },

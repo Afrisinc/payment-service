@@ -7,9 +7,9 @@ import {
   dashboardMetricsSchema,
   dashboardChartDataSchema,
   listWebhookDeliveriesSchema,
+  refreshPaymentStatusSchema,
 } from '../schemas/index.js';
 
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 export function adminRoutes(fastify: FastifyInstance, _opts: unknown, done: () => void): void {
   fastify.get(
     '/merchants',
@@ -55,6 +55,15 @@ export function adminRoutes(fastify: FastifyInstance, _opts: unknown, done: () =
     asyncWrapper(adminController.getPaymentById.bind(adminController)),
   );
 
+  fastify.post(
+    '/payments/:id/refresh-status',
+    {
+      schema: refreshPaymentStatusSchema,
+      preHandler: [fastify.authenticateAdmin],
+    },
+    asyncWrapper(adminController.refreshPaymentStatus.bind(adminController)),
+  );
+
   fastify.get(
     '/webhooks',
     {
@@ -70,6 +79,31 @@ export function adminRoutes(fastify: FastifyInstance, _opts: unknown, done: () =
       preHandler: [fastify.authenticateAdmin],
     },
     asyncWrapper(adminController.getWebhookDelivery.bind(adminController)),
+  );
+
+  // Mobile payment admin endpoints
+  fastify.get(
+    '/mobile-payments',
+    {
+      preHandler: [fastify.authenticateAdmin],
+    },
+    asyncWrapper(adminController.listMobilePayments.bind(adminController)),
+  );
+
+  fastify.get(
+    '/mobile-payments/stats',
+    {
+      preHandler: [fastify.authenticateAdmin],
+    },
+    asyncWrapper(adminController.getMobilePaymentStats.bind(adminController)),
+  );
+
+  fastify.get(
+    '/mobile-payments/:id',
+    {
+      preHandler: [fastify.authenticateAdmin],
+    },
+    asyncWrapper(adminController.getMobilePaymentById.bind(adminController)),
   );
 
   done();

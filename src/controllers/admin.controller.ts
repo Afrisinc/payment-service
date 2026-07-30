@@ -2,7 +2,7 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import { adminService } from '../services/admin.service.js';
 import { ResponseHandler } from '../utils/response.js';
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call */
 export class AdminController {
   async listMerchants(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     const { page = 1, limit = 20, status, search, sortBy = 'createdAt', sortOrder = 'desc' } = request.query as any;
@@ -86,6 +86,18 @@ export class AdminController {
     return ResponseHandler.success(reply, 1000, 'Payment retrieved successfully', payment);
   }
 
+  async refreshPaymentStatus(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const { id } = request.params as any;
+
+    const result = await adminService.refreshPaymentStatus(id);
+
+    if (!result) {
+      return ResponseHandler.error(reply, 'Payment not found', 1004, 404);
+    }
+
+    return ResponseHandler.success(reply, 1000, 'Payment status refreshed', result);
+  }
+
   async listWebhookDeliveries(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     const { page = 1, limit = 20, status, merchantId } = request.query as any;
 
@@ -104,6 +116,65 @@ export class AdminController {
     }
 
     return ResponseHandler.success(reply, 1000, 'Webhook delivery retrieved successfully', delivery);
+  }
+
+  async listMobilePayments(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const {
+      page = 1,
+      limit = 20,
+      status,
+      type,
+      provider,
+      merchantId,
+      dateFrom,
+      dateTo,
+      minAmount,
+      maxAmount,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = request.query as any;
+
+    const result = await adminService.listMobilePayments({
+      page,
+      limit,
+      status,
+      type: type as 'CASHIN' | 'CASHOUT' | undefined,
+      provider,
+      merchantId,
+      dateFrom: dateFrom ? new Date(dateFrom) : undefined,
+      dateTo: dateTo ? new Date(dateTo) : undefined,
+      minAmount: minAmount ? Number(minAmount) : undefined,
+      maxAmount: maxAmount ? Number(maxAmount) : undefined,
+      search,
+      sortBy: sortBy as 'createdAt' | 'amount' | 'status',
+      sortOrder: sortOrder as 'asc' | 'desc',
+    });
+
+    return ResponseHandler.success(reply, 1000, 'Mobile payments retrieved successfully', result);
+  }
+
+  async getMobilePaymentById(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const { id } = request.params as any;
+
+    const payment = await adminService.getMobilePaymentById(id);
+
+    if (!payment) {
+      return ResponseHandler.error(reply, 'Mobile payment not found', 1004, 404);
+    }
+
+    return ResponseHandler.success(reply, 1000, 'Mobile payment retrieved successfully', payment);
+  }
+
+  async getMobilePaymentStats(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const { dateFrom, dateTo } = request.query as any;
+
+    const stats = await adminService.getMobilePaymentStats(
+      dateFrom ? new Date(dateFrom) : undefined,
+      dateTo ? new Date(dateTo) : undefined,
+    );
+
+    return ResponseHandler.success(reply, 1000, 'Mobile payment stats retrieved successfully', stats);
   }
 }
 

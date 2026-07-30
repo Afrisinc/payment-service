@@ -10,8 +10,8 @@ import {
 } from './merchant-webhook.service.js';
 import { env } from '../config/env.js';
 import { logger } from '../lib/logger.js';
-import { prisma } from '../lib/prisma.js';
-import crypto from 'crypto';
+import { prismaRead } from '../lib/prisma.js';
+import crypto from 'node:crypto';
 
 // ── Subscription lifecycle event types forwarded to notification-service ──────
 type SubscriptionEventType =
@@ -304,7 +304,7 @@ export class WebhookService {
   ): Promise<void> {
     try {
       // Find the notification-service merchant (designated by a special flag or known url pattern)
-      const merchant = await prisma.merchant.findFirst({
+      const merchant = await prismaRead.merchant.findFirst({
         where: {
           isActive: true,
           webhookUrl: { not: null },
