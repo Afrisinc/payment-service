@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
-import { prisma } from '../lib/prisma.js';
+import { prismaRead } from '../lib/prisma.js';
 
 export interface ListMerchantsParams {
   page: number;
@@ -56,8 +56,8 @@ export class AdminRepository {
       ];
     }
 
-    const [merchants, total] = await prisma.$transaction([
-      prisma.merchant.findMany({
+    const [merchants, total] = await prismaRead.$transaction([
+      prismaRead.merchant.findMany({
         where,
         select: {
           id: true,
@@ -73,7 +73,7 @@ export class AdminRepository {
         take: params.limit,
         orderBy: { [params.sortBy]: params.sortOrder },
       }),
-      prisma.merchant.count({ where }),
+      prismaRead.merchant.count({ where }),
     ]);
 
     return {
@@ -147,7 +147,7 @@ export class AdminRepository {
     const payments: any[] = [];
 
     if (!params.type || params.type === 'mobile') {
-      const mobilePayments = await prisma.mobilePayment.findMany({
+      const mobilePayments = await prismaRead.mobilePayment.findMany({
         where: mobileWhere,
         select: {
           id: true,
@@ -172,7 +172,7 @@ export class AdminRepository {
     }
 
     if (!params.type || params.type === 'card') {
-      const cardPayments = await prisma.mobilePayment.findMany({
+      const cardPayments = await prismaRead.mobilePayment.findMany({
         where: {
           ...mobileWhere,
           metadata: { path: ['payment_type'], equals: 'card' },
@@ -200,7 +200,7 @@ export class AdminRepository {
     }
 
     if (!params.type || params.type === 'stripe') {
-      const stripePayments = await prisma.payment.findMany({
+      const stripePayments = await prismaRead.payment.findMany({
         where: paymentWhere,
         select: {
           id: true,
@@ -253,13 +253,13 @@ export class AdminRepository {
   }
 
   async getDashboardMetrics(dateFrom: Date, dateTo: Date) {
-    const mobilePayments = await prisma.mobilePayment.findMany({
+    const mobilePayments = await prismaRead.mobilePayment.findMany({
       where: {
         createdAt: { gte: dateFrom, lte: dateTo },
       },
     });
 
-    const stripePayments = await prisma.payment.findMany({
+    const stripePayments = await prismaRead.payment.findMany({
       where: {
         createdAt: { gte: dateFrom, lte: dateTo },
       },
@@ -270,13 +270,13 @@ export class AdminRepository {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const mobilePaymentsToday = await prisma.mobilePayment.findMany({
+    const mobilePaymentsToday = await prismaRead.mobilePayment.findMany({
       where: {
         createdAt: { gte: today, lt: tomorrow },
       },
     });
 
-    const stripePaymentsToday = await prisma.payment.findMany({
+    const stripePaymentsToday = await prismaRead.payment.findMany({
       where: {
         createdAt: { gte: today, lt: tomorrow },
       },
@@ -320,7 +320,7 @@ export class AdminRepository {
     const dateFrom = new Date();
     dateFrom.setDate(dateFrom.getDate() - days);
 
-    const mobilePayments = await prisma.mobilePayment.findMany({
+    const mobilePayments = await prismaRead.mobilePayment.findMany({
       where: { createdAt: { gte: dateFrom } },
       select: {
         amount: true,
@@ -331,7 +331,7 @@ export class AdminRepository {
       },
     });
 
-    const stripePayments = await prisma.payment.findMany({
+    const stripePayments = await prismaRead.payment.findMany({
       where: { createdAt: { gte: dateFrom } },
       select: {
         amount: true,
@@ -418,7 +418,7 @@ export class AdminRepository {
   }
 
   async getPaymentById(paymentId: string) {
-    const mobilePayment = await prisma.mobilePayment.findUnique({
+    const mobilePayment = await prismaRead.mobilePayment.findUnique({
       where: { id: paymentId },
       select: {
         id: true,
@@ -449,7 +449,7 @@ export class AdminRepository {
       };
     }
 
-    const stripePayment = await prisma.payment.findUnique({
+    const stripePayment = await prismaRead.payment.findUnique({
       where: { id: paymentId },
     });
 
@@ -482,8 +482,8 @@ export class AdminRepository {
       where.merchantId = merchantId;
     }
 
-    const [deliveries, total] = await prisma.$transaction([
-      prisma.webhookDelivery.findMany({
+    const [deliveries, total] = await prismaRead.$transaction([
+      prismaRead.webhookDelivery.findMany({
         where,
         select: {
           id: true,
@@ -499,7 +499,7 @@ export class AdminRepository {
         skip,
         take: limit,
       }),
-      prisma.webhookDelivery.count({ where }),
+      prismaRead.webhookDelivery.count({ where }),
     ]);
 
     return {
@@ -523,7 +523,7 @@ export class AdminRepository {
   }
 
   async getWebhookDelivery(deliveryId: string) {
-    const delivery = await prisma.webhookDelivery.findUnique({
+    const delivery = await prismaRead.webhookDelivery.findUnique({
       where: { id: deliveryId },
     });
 
@@ -582,8 +582,8 @@ export class AdminRepository {
       ];
     }
 
-    const [payments, total] = await prisma.$transaction([
-      prisma.mobilePayment.findMany({
+    const [payments, total] = await prismaRead.$transaction([
+      prismaRead.mobilePayment.findMany({
         where,
         include: {
           merchant: {
@@ -594,7 +594,7 @@ export class AdminRepository {
         skip,
         take: params.limit,
       }),
-      prisma.mobilePayment.count({ where }),
+      prismaRead.mobilePayment.count({ where }),
     ]);
 
     return {
@@ -626,7 +626,7 @@ export class AdminRepository {
   }
 
   async getMobilePaymentById(paymentId: string) {
-    const payment = await prisma.mobilePayment.findUnique({
+    const payment = await prismaRead.mobilePayment.findUnique({
       where: { id: paymentId },
       include: {
         merchant: {
@@ -671,7 +671,7 @@ export class AdminRepository {
       }
     }
 
-    const payments = await prisma.mobilePayment.findMany({ where });
+    const payments = await prismaRead.mobilePayment.findMany({ where });
 
     const totalCount = payments.length;
     const cashinCount = payments.filter((p) => p.type === 'CASHIN').length;

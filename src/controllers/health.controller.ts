@@ -1,11 +1,11 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { prisma } from '../lib/prisma.js';
+import { prismaRead, prismaWrite } from '../lib/prisma.js';
 import { env } from '../config/env.js';
 
 export class HealthController {
   async check(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
     try {
-      await prisma.$queryRaw`SELECT 1`;
+      await Promise.all([prismaWrite.$queryRaw`SELECT 1`, prismaRead.$queryRaw`SELECT 1`]);
       await reply.send({
         service: 'afrisinc-pay',
         status: 'healthy',

@@ -3,3 +3,8 @@ export { default as rawBodyPlugin } from './raw-body.plugin.js';
 export { default as errorHandlerPlugin } from './error-handler.plugin.js';
 export { default as adminAuthPlugin } from './admin-auth.plugin.js';
 export { default as swaggerPlugin } from './swagger.plugin.js';
+export { default as prismaPlugin } from './prisma.plugin.js';
+export { default as webhookPrunePlugin } from './webhook-prune.plugin.js';
+export { default as corsPlugin } from './cors.plugin.js';
+export { default as helmetPlugin } from './helmet.plugin.js';
+export { default as rateLimitPlugin } from './rate-limit.plugin.js';

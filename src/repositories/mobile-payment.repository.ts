@@ -1,5 +1,5 @@
 import type { MobilePayment, MobilePaymentStatus, MobilePaymentType, Prisma } from '@prisma/client';
-import { prisma } from '../lib/prisma.js';
+import { prismaRead, prismaWrite } from '../lib/prisma.js';
 
 export interface CreateMobilePaymentData {
   merchantId: string;
@@ -23,7 +23,7 @@ export interface MobilePaymentPage {
 
 export class MobilePaymentRepository {
   async create(data: CreateMobilePaymentData): Promise<MobilePayment> {
-    return prisma.mobilePayment.create({
+    return prismaWrite.mobilePayment.create({
       data: {
         merchantId: data.merchantId,
         orderId: data.orderId,
@@ -42,23 +42,23 @@ export class MobilePaymentRepository {
   }
 
   async findById(id: string): Promise<MobilePayment | null> {
-    return prisma.mobilePayment.findUnique({ where: { id } });
+    return prismaRead.mobilePayment.findUnique({ where: { id } });
   }
 
   async findByRef(ref: string): Promise<MobilePayment | null> {
-    return prisma.mobilePayment.findUnique({ where: { ref } });
+    return prismaWrite.mobilePayment.findUnique({ where: { ref } });
   }
 
   async findByIdAndMerchant(id: string, merchantId: string): Promise<MobilePayment | null> {
-    return prisma.mobilePayment.findFirst({ where: { id, merchantId } });
+    return prismaRead.mobilePayment.findFirst({ where: { id, merchantId } });
   }
 
   async findByRefAndMerchant(ref: string, merchantId: string): Promise<MobilePayment | null> {
-    return prisma.mobilePayment.findFirst({ where: { ref, merchantId } });
+    return prismaRead.mobilePayment.findFirst({ where: { ref, merchantId } });
   }
 
   async findByMerchantAndOrder(merchantId: string, orderId: string): Promise<MobilePayment | null> {
-    return prisma.mobilePayment.findUnique({
+    return prismaWrite.mobilePayment.findUnique({
       where: { merchantId_orderId: { merchantId, orderId } },
     });
   }
@@ -68,7 +68,7 @@ export class MobilePaymentRepository {
   ): Promise<
     (MobilePayment & { merchant: { id: string; webhookUrl: string | null; webhookSecret: string | null } }) | null
   > {
-    return prisma.mobilePayment.findUnique({
+    return prismaRead.mobilePayment.findUnique({
       where: { ref },
       include: {
         merchant: {
@@ -92,20 +92,20 @@ export class MobilePaymentRepository {
     };
 
     const [items, total] = await Promise.all([
-      prisma.mobilePayment.findMany({
+      prismaRead.mobilePayment.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         take: limit,
         skip: (page - 1) * limit,
       }),
-      prisma.mobilePayment.count({ where }),
+      prismaRead.mobilePayment.count({ where }),
     ]);
 
     return { items, total };
   }
 
   async updateStatus(id: string, status: MobilePaymentStatus, failureReason?: string): Promise<MobilePayment> {
-    return prisma.mobilePayment.update({
+    return prismaWrite.mobilePayment.update({
       where: { id },
       data: {
         status,
@@ -127,7 +127,7 @@ export class MobilePaymentRepository {
     const payment = await this.findByRef(ref);
     if (!payment) return null;
 
-    return prisma.mobilePayment.update({
+    return prismaWrite.mobilePayment.update({
       where: { id: payment.id },
       data: {
         ...data,
@@ -150,7 +150,7 @@ export class MobilePaymentRepository {
     const payment = await this.findByRef(ref);
     if (!payment) return null;
 
-    return prisma.mobilePayment.update({
+    return prismaWrite.mobilePayment.update({
       where: { id: payment.id },
       data: {
         ...data,

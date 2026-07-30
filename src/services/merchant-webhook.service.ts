@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { prisma } from '../lib/prisma.js';
+import { prismaRead, prismaWrite } from '../lib/prisma.js';
 import { logger } from '../lib/logger.js';
 import type { Payment, WebhookDeliveryStatus } from '@prisma/client';
 
@@ -93,7 +93,7 @@ class MerchantWebhookService {
       },
     };
 
-    const delivery = await prisma.webhookDelivery.create({
+    const delivery = await prismaWrite.webhookDelivery.create({
       data: {
         merchantId: merchant.id,
         paymentId: payment.id,
@@ -109,7 +109,7 @@ class MerchantWebhookService {
   }
 
   async attemptDelivery(deliveryId: string): Promise<void> {
-    const delivery = await prisma.webhookDelivery.findUnique({
+    const delivery = await prismaWrite.webhookDelivery.findUnique({
       where: { id: deliveryId },
       include: { merchant: true },
     });
@@ -120,7 +120,7 @@ class MerchantWebhookService {
 
     const { merchant } = delivery;
     if (!merchant.webhookUrl || !merchant.webhookSecret) {
-      await prisma.webhookDelivery.update({
+      await prismaWrite.webhookDelivery.update({
         where: { id: deliveryId },
         data: {
           status: 'FAILED',
@@ -138,7 +138,7 @@ class MerchantWebhookService {
     const newAttempts = delivery.attempts + 1;
 
     if (result.success) {
-      await prisma.webhookDelivery.update({
+      await prismaWrite.webhookDelivery.update({
         where: { id: deliveryId },
         data: {
           status: 'DELIVERED',
@@ -158,7 +158,7 @@ class MerchantWebhookService {
       const nextRetry = calculateNextRetry(newAttempts);
       const status: WebhookDeliveryStatus = nextRetry ? 'PENDING' : 'FAILED';
 
-      await prisma.webhookDelivery.update({
+      await prismaWrite.webhookDelivery.update({
         where: { id: deliveryId },
         data: {
           status,
@@ -228,7 +228,7 @@ class MerchantWebhookService {
   }
 
   async processRetries(): Promise<number> {
-    const pendingDeliveries = await prisma.webhookDelivery.findMany({
+    const pendingDeliveries = await prismaWrite.webhookDelivery.findMany({
       where: {
         status: 'PENDING',
         nextRetry: { lte: new Date() },
@@ -253,7 +253,7 @@ class MerchantWebhookService {
       deliveredAt: Date | null;
     }>;
   }> {
-    const deliveries = await prisma.webhookDelivery.findMany({
+    const deliveries = await prismaRead.webhookDelivery.findMany({
       where: { paymentId },
       select: {
         id: true,

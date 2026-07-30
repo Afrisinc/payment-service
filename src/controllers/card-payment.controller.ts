@@ -82,6 +82,10 @@ export class CardPaymentController {
     const params = request.params as { pcode: string };
     const result = await this.cardPaymentService.getCardPaymentStatus(params.pcode, request.merchant.id);
 
+    if (!result) {
+      return ResponseHandler.error(reply, 'Card payment not found', 1004, 404);
+    }
+
     return ResponseHandler.success(reply, 1000, 'Card payment status retrieved and updated', result);
   }
 

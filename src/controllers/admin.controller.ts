@@ -86,6 +86,18 @@ export class AdminController {
     return ResponseHandler.success(reply, 1000, 'Payment retrieved successfully', payment);
   }
 
+  async refreshPaymentStatus(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const { id } = request.params as any;
+
+    const result = await adminService.refreshPaymentStatus(id);
+
+    if (!result) {
+      return ResponseHandler.error(reply, 'Payment not found', 1004, 404);
+    }
+
+    return ResponseHandler.success(reply, 1000, 'Payment status refreshed', result);
+  }
+
   async listWebhookDeliveries(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     const { page = 1, limit = 20, status, merchantId } = request.query as any;
 

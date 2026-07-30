@@ -7,9 +7,9 @@ import {
   dashboardMetricsSchema,
   dashboardChartDataSchema,
   listWebhookDeliveriesSchema,
+  refreshPaymentStatusSchema,
 } from '../schemas/index.js';
 
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 export function adminRoutes(fastify: FastifyInstance, _opts: unknown, done: () => void): void {
   fastify.get(
     '/merchants',
@@ -53,6 +53,15 @@ export function adminRoutes(fastify: FastifyInstance, _opts: unknown, done: () =
       preHandler: [fastify.authenticateAdmin],
     },
     asyncWrapper(adminController.getPaymentById.bind(adminController)),
+  );
+
+  fastify.post(
+    '/payments/:id/refresh-status',
+    {
+      schema: refreshPaymentStatusSchema,
+      preHandler: [fastify.authenticateAdmin],
+    },
+    asyncWrapper(adminController.refreshPaymentStatus.bind(adminController)),
   );
 
   fastify.get(

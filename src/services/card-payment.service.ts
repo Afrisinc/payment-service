@@ -138,28 +138,37 @@ export class CardPaymentService {
   async getCardPaymentStatus(
     pcode: string,
     merchantId: string,
-  ): Promise<{ status: string; provider: string; pcode: string }> {
+  ): Promise<{ status: string; provider: string; pcode: string } | null> {
+    const payment = await this.mobilePaymentRepository.findByRefAndMerchant(pcode, merchantId);
+    if (!payment) {
+      return null;
+    }
+
     try {
-      // Load payment to verify ownership
-      const payment = await this.mobilePaymentRepository.findByRefAndMerchant(pcode, merchantId);
-      if (!payment) {
-        throw new Error(`Card payment not found: ${pcode}`);
-      }
+      const itec = getItecHelper();
+      const statusCheck = await itec.checkStatus(payment.ref);
+      const mappedStatus = this.mapCardStatus(statusCheck.data.status);
 
-      // Return current status from database
-      // Card payment status is updated via PesaPal webhooks
-      logger.info({ pcode, status: payment.status }, 'Card payment status retrieved from database');
+      const updated = await this.mobilePaymentRepository.updateByRef(payment.ref, {
+        status: mappedStatus,
+        provider: 'itec',
+        failureReason: mappedStatus === 'FAILED' ? 'Card payment failed (ITEC status check)' : undefined,
+      });
 
+      logger.info({ pcode, status: mappedStatus }, 'Card payment status updated via ITEC polling');
+
+      return {
+        status: updated?.status ?? mappedStatus,
+        provider: 'itec',
+        pcode: payment.ref,
+      };
+    } catch (err) {
+      logger.warn({ err, pcode }, 'ITEC card status poll failed; returning last known DB status');
       return {
         status: payment.status,
         provider: payment.provider || 'itec',
         pcode: payment.ref,
       };
-    } catch (err) {
-      const message = this.extractErrorMessage(err, 'Failed to get card payment status');
-      logger.error({ err, pcode }, 'Card payment status check error');
-      if (err instanceof ItecError) throw err;
-      throw new Error(message);
     }
   }
 

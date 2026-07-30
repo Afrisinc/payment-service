@@ -203,6 +203,19 @@ export class MobilePaymentService {
     return this.mobilePaymentRepository.findByRefAndMerchant(ref, merchantId);
   }
 
+  async getPaymentStatusByRef(
+    ref: string,
+    merchantId: string,
+  ): Promise<{ status: string; fee?: number; provider?: string } | null> {
+    const payment = await this.mobilePaymentRepository.findByRefAndMerchant(ref, merchantId);
+    if (!payment) return null;
+
+    return this.getTransactionStatus(payment.ref, {
+      provider: payment.provider,
+      metadata: payment.metadata as Record<string, unknown> | null,
+    });
+  }
+
   /**
    * List payments for a merchant
    */
