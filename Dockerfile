@@ -30,4 +30,4 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 EXPOSE 8013
 
-CMD ["node", "dist/index.js"]
+CMD ["npm", "start"]
