@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 import { getItecHelper, ItecError } from '../helpers/itec.js';
 import { MobilePaymentRepository } from '../repositories/mobile-payment.repository.js';
 import { logger } from '../lib/logger.js';
+import { retry } from '../lib/retry.js';
 import type {
   CardPaymentRequestParams,
   CardPaymentResult,
@@ -146,7 +147,7 @@ export class CardPaymentService {
 
     try {
       const itec = getItecHelper();
-      const statusCheck = await itec.checkStatus(payment.ref);
+      const statusCheck = await retry(() => itec.checkStatus(payment.ref), 3, 'Card payment status check');
       const mappedStatus = this.mapCardStatus(statusCheck.data.status);
 
       const updated = await this.mobilePaymentRepository.updateByRef(payment.ref, {
