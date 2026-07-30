@@ -1,8 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { adminService } from '../services/admin.service.js';
 import { ResponseHandler } from '../utils/response.js';
-
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call */
 export class AdminController {
   async listMerchants(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     const { page = 1, limit = 20, status, search, sortBy = 'createdAt', sortOrder = 'desc' } = request.query as any;
