@@ -2,6 +2,7 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import { MobilePaymentStatus, MobilePaymentType } from '@prisma/client';
 import { MobilePaymentService } from '../services/mobile-payment.service.js';
 import { ResponseHandler } from '../utils/response.js';
+import { serializeDates } from '../lib/serialize.js';
 
 type MerchantRequest = FastifyRequest & {
   merchant: {
@@ -88,7 +89,7 @@ export class MobilePaymentController {
       return ResponseHandler.error(reply, 'Payment not found', 1004, 404);
     }
 
-    return ResponseHandler.success(reply, 1000, 'Payment retrieved successfully', payment);
+    return ResponseHandler.success(reply, 1000, 'Payment retrieved successfully', serializeDates(payment));
   }
 
   /**
@@ -102,7 +103,7 @@ export class MobilePaymentController {
       return ResponseHandler.error(reply, 'Payment not found', 1004, 404);
     }
 
-    return ResponseHandler.success(reply, 1000, 'Payment retrieved successfully', payment);
+    return ResponseHandler.success(reply, 1000, 'Payment retrieved successfully', serializeDates(payment));
   }
 
   async getPaymentStatus(request: MerchantRequest, reply: FastifyReply): Promise<void> {
@@ -144,7 +145,7 @@ export class MobilePaymentController {
     const result = await this.mobilePaymentService.listPayments(request.merchant.id, page, limit, status, type);
 
     return ResponseHandler.success(reply, 1000, 'Payments retrieved successfully', {
-      data: result.items,
+      data: serializeDates(result.items),
       pagination: {
         total: result.total,
         page,

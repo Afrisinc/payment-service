@@ -1,6 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { CardPaymentService } from '../services/card-payment.service.js';
 import { ResponseHandler } from '../utils/response.js';
+import { serializeDates } from '../lib/serialize.js';
 
 type MerchantRequest = FastifyRequest & {
   merchant: {
@@ -58,7 +59,7 @@ export class CardPaymentController {
       return ResponseHandler.error(reply, 'Card payment not found', 1004, 404);
     }
 
-    return ResponseHandler.success(reply, 1000, 'Card payment retrieved successfully', payment);
+    return ResponseHandler.success(reply, 1000, 'Card payment retrieved successfully', serializeDates(payment));
   }
 
   /**
@@ -72,7 +73,7 @@ export class CardPaymentController {
       return ResponseHandler.error(reply, 'Card payment not found', 1004, 404);
     }
 
-    return ResponseHandler.success(reply, 1000, 'Card payment retrieved successfully', payment);
+    return ResponseHandler.success(reply, 1000, 'Card payment retrieved successfully', serializeDates(payment));
   }
 
   /**
@@ -104,7 +105,7 @@ export class CardPaymentController {
     const result = await this.cardPaymentService.listCardPayments(request.merchant.id, page, limit);
 
     return ResponseHandler.success(reply, 1000, 'Card payments retrieved successfully', {
-      data: result.items,
+      data: serializeDates(result.items),
       pagination: {
         total: result.total,
         page,
