@@ -156,7 +156,7 @@ model MobilePayment {
   @@unique([merchantId, orderId])
   @@index([merchantId])
   @@index([ref])
-  @@index([status])
+  @@index([status, createdAt])
   @@index([phoneNumber])
   @@map("mobile_payments")
 }
