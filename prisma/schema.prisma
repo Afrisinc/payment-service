@@ -21,7 +21,6 @@ model Merchant {
   updatedAt         DateTime            @updatedAt @map("updated_at")
   payments          Payment[]
   fees              Fee[]
-  webhookDeliveries WebhookDelivery[]
   mobilePayments    MobilePayment[]
 
   @@index([apiKeyHash])
@@ -43,7 +42,6 @@ model Payment {
   updatedAt         DateTime          @updatedAt @map("updated_at")
   merchant          Merchant          @relation(fields: [merchantId], references: [id])
   fees              Fee[]
-  webhookDeliveries WebhookDelivery[]
 
   @@unique([merchantId, orderId])
   @@index([merchantId])
@@ -92,8 +90,6 @@ model WebhookDelivery {
   errorMessage String?               @map("error_message") @db.Text
   createdAt    DateTime              @default(now()) @map("created_at")
   deliveredAt  DateTime?             @map("delivered_at")
-  merchant     Merchant              @relation(fields: [merchantId], references: [id])
-  payment      Payment               @relation(fields: [paymentId], references: [id])
 
   @@index([merchantId])
   @@index([paymentId])
