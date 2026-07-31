@@ -6,6 +6,7 @@ import type {
 } from '../repositories/admin.repository.js';
 import { MobilePaymentRepository } from '../repositories/mobile-payment.repository.js';
 import { paymentRepository } from '../repositories/payment.repository.js';
+import { merchantWebhookService } from './merchant-webhook.service.js';
 import { MobilePaymentService } from './mobile-payment.service.js';
 import { CardPaymentService } from './card-payment.service.js';
 
@@ -77,6 +78,7 @@ export class AdminService {
 
     if (!payment) return null;
 
+    const oldStatus = payment.status;
     const metadata = (payment.metadata as Record<string, unknown> | null) ?? {};
     const isCard = metadata.payment_type === 'card' || payment.type === 'CARD';
 
@@ -85,6 +87,17 @@ export class AdminService {
       result = isCard
         ? await cardPaymentService.getCardPaymentStatus(payment.ref, payment.merchantId)
         : await mobilePaymentService.getPaymentStatusByRef(payment.ref, payment.merchantId);
+    }
+
+    const newStatus = result?.status ?? payment.status;
+
+    // Notify merchant if status changed
+    if (oldStatus !== newStatus && result && payment.merchant) {
+      const paymentWithMerchant = {
+        ...payment,
+        status: newStatus,
+      } as any;
+      await merchantWebhookService.notifyPaymentEvent(paymentWithMerchant, 'payment.succeeded');
     }
 
     let type: RefreshedPaymentStatus['type'];
@@ -99,7 +112,7 @@ export class AdminService {
       ref: payment.ref || payment.orderId,
       type,
       merchantId: payment.merchantId,
-      status: result?.status ?? payment.status,
+      status: newStatus,
       provider: result?.provider ?? payment.provider ?? null,
     } as RefreshedPaymentStatus;
   }
