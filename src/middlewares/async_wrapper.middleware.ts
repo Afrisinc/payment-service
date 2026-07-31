@@ -1,12 +1,12 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ExceptionProcessor, HttpError } from '../utils/http-error.js';
 import { ResponseHandler } from '../utils/response.js';
 import { mapPrismaError } from '../utils/prisma.error.js';
 
-type AsyncHandler = (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+type AsyncHandler = (request: FastifyRequest<any>, reply: FastifyReply) => Promise<void>;
 
 export function asyncWrapper(fn: AsyncHandler): AsyncHandler {
-  return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+  return async (request: FastifyRequest<any>, reply: FastifyReply): Promise<void> => {
     try {
       await fn(request, reply);
     } catch (err: unknown) {

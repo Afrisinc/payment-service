@@ -44,6 +44,9 @@ export const createIntentSchema: FastifySchema = {
 };
 
 export const listPaymentsSchema: FastifySchema = {
+  tags: ['Payments'],
+  summary: 'List all payments',
+  description: 'Get a paginated list of all payments for the authenticated merchant',
   security: bearerAuth,
   querystring: {
     type: 'object',
@@ -57,12 +60,29 @@ export const listPaymentsSchema: FastifySchema = {
 };
 
 export const getPaymentSchema: FastifySchema = {
+  tags: ['Payments'],
+  summary: 'Get payment by ID',
+  description: 'Retrieve detailed information about a specific payment',
   security: bearerAuth,
   params: {
     type: 'object',
     required: ['id'],
     properties: {
       id: { type: 'string', format: 'uuid' },
+    },
+  },
+};
+
+export const checkPaymentStatusSchema: FastifySchema = {
+  tags: ['Payments'],
+  summary: 'Check payment status',
+  description: 'Get the current status of a payment by reference (orderId)',
+  security: bearerAuth,
+  params: {
+    type: 'object',
+    required: ['ref'],
+    properties: {
+      ref: { type: 'string', minLength: 1, maxLength: 255, description: 'Payment reference (orderId)' },
     },
   },
 };

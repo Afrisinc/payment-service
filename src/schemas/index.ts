@@ -3,6 +3,7 @@ export {
   createIntentSchema,
   listPaymentsSchema,
   getPaymentSchema,
+  checkPaymentStatusSchema,
   refundPaymentSchema,
 } from './payment.schema.js';
 
