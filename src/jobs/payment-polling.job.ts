@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import { logger } from '../lib/logger.js';
 import { prismaRead, prismaWrite } from '../lib/prisma.js';
-import { MobilePaymentService, CardPaymentService } from '../services/index.js';
+import { MobilePaymentService, CardPaymentService, merchantWebhookService } from '../services/index.js';
 import { retry } from '../lib/retry.js';
 import type { RetryMetadata } from '../types/cron-jobs.js';
 
@@ -144,6 +144,33 @@ async function checkMobilePaymentStatus(payment: any): Promise<{ checked: number
         'Payment status updated via polling',
       );
 
+      // Notify merchant only for terminal states (SUCCESSFUL or FAILED)
+      if (newStatus === 'SUCCESSFUL' || newStatus === 'FAILED') {
+        try {
+          const eventType = newStatus === 'SUCCESSFUL' ? 'payment.succeeded' : 'payment.failed';
+          const adaptedPayment = {
+            id: payment.id,
+            orderId: payment.orderId,
+            amount: payment.amount,
+            currency: payment.currency,
+            status: newStatus,
+            metadata: payment.metadata,
+            merchant: payment.merchant,
+          } as any;
+          await merchantWebhookService.notifyPaymentEvent(adaptedPayment, eventType);
+        } catch (notifyErr) {
+          logger.warn(
+            { err: notifyErr, paymentId: payment.id },
+            'Failed to notify merchant of status change during polling',
+          );
+        }
+      } else {
+        logger.debug(
+          { paymentId: payment.id, newStatus },
+          'Status changed but not terminal state, skipping merchant notification',
+        );
+      }
+
       return { checked: 1, updated: 1, failed: 0 };
     }
 
@@ -233,6 +260,33 @@ async function checkCardPaymentStatus(payment: any): Promise<{ checked: number; 
         },
         'Card payment status updated via polling',
       );
+
+      // Notify merchant only for terminal states (SUCCESSFUL or FAILED)
+      if (newStatus === 'SUCCESSFUL' || newStatus === 'FAILED') {
+        try {
+          const eventType = newStatus === 'SUCCESSFUL' ? 'payment.succeeded' : 'payment.failed';
+          const adaptedPayment = {
+            id: payment.id,
+            orderId: payment.orderId,
+            amount: payment.amount,
+            currency: payment.currency,
+            status: newStatus,
+            metadata: payment.metadata,
+            merchant: payment.merchant,
+          } as any;
+          await merchantWebhookService.notifyPaymentEvent(adaptedPayment, eventType);
+        } catch (notifyErr) {
+          logger.warn(
+            { err: notifyErr, paymentId: payment.id },
+            'Failed to notify merchant of card payment status change during polling',
+          );
+        }
+      } else {
+        logger.debug(
+          { paymentId: payment.id, newStatus },
+          'Card payment status changed but not terminal state, skipping merchant notification',
+        );
+      }
 
       return { checked: 1, updated: 1, failed: 0 };
     }
