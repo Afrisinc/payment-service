@@ -70,8 +70,8 @@ export class MobilePaymentService {
           amount,
           phone: normalizedPhone,
           reqRef: requestRef,
-          note: description,
-          message: `Payment for order ${orderId}`,
+          note: description?.substring(0, 50),
+          message: orderId,
         });
 
         transactionRef = itecResponse.data.transaction_id;
