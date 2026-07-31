@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import { app } from './app.js';
 import { env } from './config/env.js';
 import { logger } from './lib/logger.js';
+import { startPaymentPollingJobs } from './jobs/payment-polling.job.js';
 
 async function main(): Promise<void> {
   const fastify = Fastify({
@@ -20,6 +21,8 @@ async function main(): Promise<void> {
   });
 
   await fastify.register(app);
+
+  startPaymentPollingJobs();
 
   const shutdown = (signal: string) => {
     logger.info(`${signal} received, shutting down gracefully`);
