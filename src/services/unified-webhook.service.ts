@@ -16,11 +16,13 @@ export class UnifiedWebhookService {
       return 'pesapal';
     }
 
+    // ITEC V2 Mobile Money webhook format
+    // Has transID and/or data.transaction_id
     if (
-      typeof payload.status === 'number' &&
-      payload.data &&
-      typeof payload.data === 'object' &&
-      'transaction_id' in (payload.data as Record<string, unknown>)
+      payload.transID ||
+      (payload.data &&
+        typeof payload.data === 'object' &&
+        'transaction_id' in (payload.data as Record<string, unknown>))
     ) {
       logger.info('Webhook: ITEC Mobile detected');
       return 'itec';

@@ -335,6 +335,7 @@ export class MobilePaymentService {
     event_type?: string;
     PCODE?: string; // PesaPal card payment callback
     pcode?: string;
+    transID?: string; // ITEC top-level transaction ID
     data?: {
       ref?: string;
       transaction_id?: string;
@@ -346,7 +347,7 @@ export class MobilePaymentService {
     status?: string;
   }): Promise<void> {
     // Determine transaction reference from various webhook formats
-    const transactionRef = event.data?.ref || event.data?.transaction_id || event.PCODE || event.pcode;
+    const transactionRef = event.data?.ref || event.data?.transaction_id || event.transID || event.PCODE || event.pcode;
     const eventKind = event.event_kind || event.event_type || 'transaction:processed';
     const paymentStatus = event.data?.status || event.status;
 
