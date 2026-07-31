@@ -111,15 +111,17 @@ class MerchantWebhookService {
   async attemptDelivery(deliveryId: string): Promise<void> {
     const delivery = await prismaWrite.webhookDelivery.findUnique({
       where: { id: deliveryId },
-      include: { merchant: true },
     });
 
     if (!delivery || delivery.status === 'DELIVERED') {
       return;
     }
 
-    const { merchant } = delivery;
-    if (!merchant.webhookUrl || !merchant.webhookSecret) {
+    const merchant = await prismaRead.merchant.findUnique({
+      where: { id: delivery.merchantId },
+    });
+
+    if (!merchant || !merchant.webhookUrl || !merchant.webhookSecret) {
       await prismaWrite.webhookDelivery.update({
         where: { id: deliveryId },
         data: {
