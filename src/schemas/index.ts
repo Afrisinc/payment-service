@@ -7,7 +7,7 @@ export {
   refundPaymentSchema,
 } from './payment.schema.js';
 
-export { healthCheckSchema } from './health.schema.js';
+export { healthCheckSchema, livenessSchema, readinessSchema } from './health.schema.js';
 
 export { createMerchantSchema, merchantParamsSchema, configureWebhookSchema } from './merchant.schema.js';
 
