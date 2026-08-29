@@ -152,19 +152,31 @@ export class AdminRepository {
           id: true,
           ref: true,
           orderId: true,
-          merchantId: true,
           amount: true,
           currency: true,
           status: true,
           provider: true,
           phoneNumber: true,
+          fee: true,
           createdAt: true,
+          merchant: { select: { name: true } },
         },
         orderBy: { [params.sortBy]: params.sortOrder },
       });
       payments.push(
         ...mobilePayments.map((p) => ({
-          ...p,
+          id: p.id,
+          ref: p.ref,
+          orderId: p.orderId,
+          merchant: p.merchant.name,
+          amount: p.amount,
+          currency: p.currency,
+          status: p.status,
+          provider: p.provider,
+          phoneNumber: p.phoneNumber,
+          feeAmount: p.fee,
+          feePercent: p.amount > 0 ? Number(((p.fee / p.amount) * 100).toFixed(2)) : 0,
+          createdAt: p.createdAt,
           type: 'mobile',
         })),
       );
@@ -180,19 +192,31 @@ export class AdminRepository {
           id: true,
           ref: true,
           orderId: true,
-          merchantId: true,
           amount: true,
           currency: true,
           status: true,
           provider: true,
           phoneNumber: true,
+          fee: true,
           createdAt: true,
+          merchant: { select: { name: true } },
         },
         orderBy: { [params.sortBy]: params.sortOrder },
       });
       payments.push(
         ...cardPayments.map((p) => ({
-          ...p,
+          id: p.id,
+          ref: p.ref,
+          orderId: p.orderId,
+          merchant: p.merchant.name,
+          amount: p.amount,
+          currency: p.currency,
+          status: p.status,
+          provider: p.provider,
+          phoneNumber: p.phoneNumber,
+          feeAmount: p.fee,
+          feePercent: p.amount > 0 ? Number(((p.fee / p.amount) * 100).toFixed(2)) : 0,
+          createdAt: p.createdAt,
           type: 'card',
         })),
       );
@@ -204,22 +228,37 @@ export class AdminRepository {
         select: {
           id: true,
           orderId: true,
-          merchantId: true,
           amount: true,
           currency: true,
           status: true,
           createdAt: true,
+          merchant: { select: { name: true, defaultFeePercent: true } },
+          fees: { select: { feeAmount: true, feePercent: true }, take: 1 },
         },
         orderBy: { [params.sortBy]: params.sortOrder },
       });
       payments.push(
-        ...stripePayments.map((p) => ({
-          ...p,
-          type: 'stripe',
-          ref: p.id,
-          provider: 'stripe',
-          phoneNumber: null,
-        })),
+        ...stripePayments.map((p) => {
+          const fee = p.fees[0];
+          const feeAmount = fee ? fee.feeAmount : Math.round((p.amount * Number(p.merchant.defaultFeePercent)) / 100);
+          const feePercent = fee ? Number(fee.feePercent) : Number(p.merchant.defaultFeePercent);
+
+          return {
+            id: p.id,
+            ref: p.id,
+            orderId: p.orderId,
+            merchant: p.merchant.name,
+            amount: p.amount,
+            currency: p.currency,
+            status: p.status,
+            provider: 'stripe',
+            phoneNumber: null,
+            feeAmount,
+            feePercent,
+            createdAt: p.createdAt,
+            type: 'stripe',
+          };
+        }),
       );
     }
 
