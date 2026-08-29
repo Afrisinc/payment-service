@@ -9,6 +9,10 @@ function rawBodyPlugin(fastify: FastifyInstance, _opts: unknown, done: () => voi
       if (request.routeOptions.config?.rawBody) {
         request.rawBody = body;
       }
+      if (body.length === 0) {
+        parseDone(null, undefined);
+        return;
+      }
       try {
         const json = JSON.parse(body.toString()) as unknown;
         parseDone(null, json);
