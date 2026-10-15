@@ -116,6 +116,14 @@ export class AdminController {
     return ResponseHandler.success(reply, 1000, 'Webhook delivery retrieved successfully', delivery);
   }
 
+  async retryWebhookDelivery(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const { id } = request.params as { id: string };
+
+    const delivery = await adminService.retryWebhookDelivery(id);
+
+    return ResponseHandler.success(reply, 1000, 'Webhook delivery retried', delivery);
+  }
+
   async listMobilePayments(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     const {
       page = 1,
@@ -173,6 +181,29 @@ export class AdminController {
     );
 
     return ResponseHandler.success(reply, 1000, 'Mobile payment stats retrieved successfully', stats);
+  }
+
+  async getMerchantBalance(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const { id } = request.params as { id: string };
+
+    const balance = await adminService.getMerchantBalance(id);
+
+    return ResponseHandler.success(reply, 1000, 'Merchant balance retrieved successfully', balance);
+  }
+
+  async createMerchantPayout(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const { id } = request.params as { id: string };
+    const body = request.body as {
+      orderId: string;
+      amount: number;
+      phoneNumber: string;
+      recipientName?: string;
+      description?: string;
+    };
+
+    const payout = await adminService.createMerchantPayout(id, body);
+
+    return ResponseHandler.success(reply, 1000, 'Payout initiated successfully', payout, 201);
   }
 }
 

@@ -41,7 +41,7 @@ interface DeliveryResult {
   error?: string;
 }
 
-const MAX_RETRY_ATTEMPTS = 5;
+export const WEBHOOK_MAX_ATTEMPTS = 5;
 const RETRY_DELAYS_MS = [
   0, // Immediate
   60_000, // 1 minute
@@ -62,7 +62,7 @@ function buildSignatureHeader(payload: string, secret: string): string {
 }
 
 function calculateNextRetry(attempts: number): Date | null {
-  if (attempts >= MAX_RETRY_ATTEMPTS) {
+  if (attempts >= WEBHOOK_MAX_ATTEMPTS) {
     return null;
   }
   const delayMs = RETRY_DELAYS_MS[attempts] ?? RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1] ?? 60_000;

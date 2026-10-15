@@ -5,7 +5,13 @@ import type {
   ListMobilePaymentsParams,
 } from '../repositories/admin.repository.js';
 import { MobilePaymentRepository } from '../repositories/mobile-payment.repository.js';
+import type { MerchantLedger } from '../repositories/mobile-payment.repository.js';
 import { paymentRepository } from '../repositories/payment.repository.js';
+import { merchantRepository } from '../repositories/merchant.repository.js';
+import { env } from '../config/env.js';
+import { ConflictError, HttpError, NotFoundError } from '../utils/http-error.js';
+import type { MobilePaymentResult } from '../types/mobile-payment.js';
+import type { WebhookDeliveryStatus } from '@prisma/client';
 import { merchantWebhookService } from './merchant-webhook.service.js';
 import { MobilePaymentService } from './mobile-payment.service.js';
 import { CardPaymentService } from './card-payment.service.js';
@@ -21,6 +27,19 @@ export interface RefreshedPaymentStatus {
   merchantId: string;
   status: string;
   provider: string | null;
+}
+
+export interface MerchantBalance extends MerchantLedger {
+  merchantId: string;
+  payoutsEnabled: boolean;
+}
+
+export interface AdminPayoutParams {
+  orderId: string;
+  amount: number;
+  phoneNumber: string;
+  recipientName?: string;
+  description?: string;
 }
 
 export class AdminService {
@@ -47,11 +66,24 @@ export class AdminService {
     return adminRepository.getPaymentById(paymentId);
   }
 
-  async listWebhookDeliveries(page: number, limit: number, status?: string, merchantId?: string) {
+  async listWebhookDeliveries(page: number, limit: number, status?: WebhookDeliveryStatus, merchantId?: string) {
     return adminRepository.listWebhookDeliveries(page, limit, status, merchantId);
   }
 
   async getWebhookDelivery(deliveryId: string) {
+    return adminRepository.getWebhookDelivery(deliveryId);
+  }
+
+  /**
+   * Manually re-send a webhook that has not been delivered (one immediate attempt)
+   */
+  async retryWebhookDelivery(deliveryId: string) {
+    const delivery = await adminRepository.getWebhookDelivery(deliveryId);
+    if (!delivery) throw new NotFoundError('Webhook delivery not found');
+    if (delivery.status === 'DELIVERED') throw new ConflictError('Webhook already delivered');
+
+    await merchantWebhookService.attemptDelivery(deliveryId);
+
     return adminRepository.getWebhookDelivery(deliveryId);
   }
 
@@ -115,6 +147,40 @@ export class AdminService {
       status: newStatus,
       provider: result?.provider ?? payment.provider ?? null,
     } as RefreshedPaymentStatus;
+  }
+
+  async getMerchantBalance(merchantId: string): Promise<MerchantBalance> {
+    const merchant = await merchantRepository.findById(merchantId);
+    if (!merchant) throw new NotFoundError('Merchant not found');
+
+    const ledger = await mobilePaymentService.getMerchantLedger(merchantId);
+    return { merchantId, ...ledger, payoutsEnabled: env.ADMIN_PAYOUTS_ENABLED };
+  }
+
+  /**
+   * Send an ITEC payout on behalf of a merchant from the admin dashboard.
+   * Same guarantees as the merchant API: idempotent on orderId and bounded by the merchant balance.
+   */
+  async createMerchantPayout(merchantId: string, params: AdminPayoutParams): Promise<MobilePaymentResult> {
+    if (!env.ADMIN_PAYOUTS_ENABLED) {
+      throw new HttpError(403, 'Admin payouts are disabled');
+    }
+
+    const merchant = await merchantRepository.findById(merchantId);
+    if (!merchant) throw new NotFoundError('Merchant not found');
+    if (!merchant.isActive) throw new ConflictError('Merchant account is inactive');
+
+    return mobilePaymentService.cashout({
+      merchant,
+      merchantId,
+      orderId: params.orderId,
+      amount: params.amount,
+      phoneNumber: params.phoneNumber,
+      recipientName: params.recipientName,
+      description: params.description,
+      metadata: { initiated_by: 'admin_dashboard' },
+      provider: 'itec',
+    });
   }
 }
 

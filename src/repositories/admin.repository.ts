@@ -1,4 +1,8 @@
+import type { Prisma, WebhookDelivery, WebhookDeliveryStatus } from '@prisma/client';
 import { prismaRead } from '../lib/prisma.js';
+import { WEBHOOK_MAX_ATTEMPTS } from '../services/merchant-webhook.service.js';
+
+type DeliveryMerchant = { name: string; webhookUrl: string | null };
 
 export interface ListMerchantsParams {
   page: number;
@@ -508,30 +512,17 @@ export class AdminRepository {
     return null;
   }
 
-  async listWebhookDeliveries(page: number, limit: number, status?: string, merchantId?: string) {
+  async listWebhookDeliveries(page: number, limit: number, status?: WebhookDeliveryStatus, merchantId?: string) {
     const skip = (page - 1) * limit;
 
-    const where: any = {};
-    if (status) {
-      where.status = status;
-    }
-    if (merchantId) {
-      where.merchantId = merchantId;
-    }
+    const where: Prisma.WebhookDeliveryWhereInput = {
+      ...(status && { status }),
+      ...(merchantId && { merchantId }),
+    };
 
     const [deliveries, total] = await prismaRead.$transaction([
       prismaRead.webhookDelivery.findMany({
         where,
-        select: {
-          id: true,
-          merchantId: true,
-          eventType: true,
-          status: true,
-          attempts: true,
-          nextRetry: true,
-          createdAt: true,
-          deliveredAt: true,
-        },
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
@@ -539,17 +530,10 @@ export class AdminRepository {
       prismaRead.webhookDelivery.count({ where }),
     ]);
 
+    const merchants = await this.findDeliveryMerchants(deliveries.map((d) => d.merchantId));
+
     return {
-      data: deliveries.map((d) => ({
-        id: d.id,
-        merchantId: d.merchantId,
-        eventType: d.eventType,
-        status: d.status,
-        attempts: d.attempts,
-        nextRetry: d.nextRetry ? d.nextRetry.toISOString() : null,
-        createdAt: d.createdAt.toISOString(),
-        deliveredAt: d.deliveredAt ? d.deliveredAt.toISOString() : null,
-      })),
+      data: deliveries.map((d) => toWebhookDeliveryView(d, merchants.get(d.merchantId))),
       pagination: {
         total,
         page,
@@ -563,24 +547,22 @@ export class AdminRepository {
     const delivery = await prismaRead.webhookDelivery.findUnique({
       where: { id: deliveryId },
     });
+    if (!delivery) return null;
 
-    return delivery
-      ? {
-          id: delivery.id,
-          merchantId: delivery.merchantId,
-          paymentId: delivery.paymentId,
-          eventType: delivery.eventType,
-          payload: delivery.payload,
-          status: delivery.status,
-          attempts: delivery.attempts,
-          lastAttempt: delivery.lastAttempt ? delivery.lastAttempt.toISOString() : null,
-          nextRetry: delivery.nextRetry ? delivery.nextRetry.toISOString() : null,
-          responseCode: delivery.responseCode,
-          errorMessage: delivery.errorMessage,
-          createdAt: delivery.createdAt.toISOString(),
-          deliveredAt: delivery.deliveredAt ? delivery.deliveredAt.toISOString() : null,
-        }
-      : null;
+    const merchants = await this.findDeliveryMerchants([delivery.merchantId]);
+    return toWebhookDeliveryView(delivery, merchants.get(delivery.merchantId));
+  }
+
+  /** WebhookDelivery has no Prisma relation to Merchant: resolve merchants in one query */
+  private async findDeliveryMerchants(merchantIds: string[]): Promise<Map<string, DeliveryMerchant>> {
+    const ids = [...new Set(merchantIds)];
+    if (ids.length === 0) return new Map();
+
+    const merchants = await prismaRead.merchant.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true, webhookUrl: true },
+    });
+    return new Map(merchants.map((m) => [m.id, { name: m.name, webhookUrl: m.webhookUrl }]));
   }
 
   async listMobilePayments(params: ListMobilePaymentsParams) {
@@ -752,3 +734,27 @@ export class AdminRepository {
 }
 
 export const adminRepository = new AdminRepository();
+
+/**
+ * Full webhook delivery log entry, as shown in the admin dashboard
+ */
+function toWebhookDeliveryView(delivery: WebhookDelivery, merchant?: DeliveryMerchant) {
+  return {
+    id: delivery.id,
+    merchantId: delivery.merchantId,
+    merchantName: merchant?.name ?? null,
+    webhookUrl: merchant?.webhookUrl ?? null,
+    paymentId: delivery.paymentId,
+    eventType: delivery.eventType,
+    payload: delivery.payload,
+    status: delivery.status,
+    attempts: delivery.attempts,
+    maxAttempts: WEBHOOK_MAX_ATTEMPTS,
+    lastAttempt: delivery.lastAttempt ? delivery.lastAttempt.toISOString() : null,
+    nextRetry: delivery.nextRetry ? delivery.nextRetry.toISOString() : null,
+    responseCode: delivery.responseCode,
+    errorMessage: delivery.errorMessage,
+    createdAt: delivery.createdAt.toISOString(),
+    deliveredAt: delivery.deliveredAt ? delivery.deliveredAt.toISOString() : null,
+  };
+}
