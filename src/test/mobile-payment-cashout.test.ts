@@ -140,19 +140,22 @@ describe('MobilePaymentService.cashout (ITEC)', () => {
   });
 
   it('marks the payout FAILED when ITEC rejects it', async () => {
-    itec.requestCashout.mockRejectedValue(new ItecError('Cashout request rejected: insufficient balance', 400));
+    itec.requestCashout.mockRejectedValue(new ItecError('ITEC rejected the payout: Insufficient balance', 400));
 
-    await expect(service.cashout(request)).rejects.toBeInstanceOf(ItecError);
+    await expect(service.cashout(request)).rejects.toMatchObject({
+      statusCode: 422,
+      message: 'ITEC rejected the payout: Insufficient balance',
+    });
     expect(repo.updateById).toHaveBeenCalledWith('payment-uuid', {
       status: 'FAILED',
-      failureReason: 'Cashout request rejected: insufficient balance',
+      failureReason: 'ITEC rejected the payout: Insufficient balance',
     });
   });
 
   it('keeps the payout PENDING and flags it for review when the ITEC outcome is unknown', async () => {
     itec.requestCashout.mockRejectedValue(new ItecError('Cashout request failed: timeout', 502, true));
 
-    await expect(service.cashout(request)).rejects.toBeInstanceOf(ItecError);
+    await expect(service.cashout(request)).rejects.toMatchObject({ statusCode: 502 });
     const update = repo.updateById.mock.calls[0][1];
     expect(update.status).toBeUndefined();
     expect(update.metadata).toMatchObject({ requires_manual_review: true, payment_type: 'mobile_money' });
@@ -221,6 +224,23 @@ describe('MobilePaymentRepository.getLedger', () => {
       pendingPayouts: 1_500,
       available: 4_200,
       currency: 'RWF',
+    });
+  });
+});
+
+describe('ItecHelper.requestCashout', () => {
+  it('surfaces the nested ITEC rejection reason as a definitive failure', async () => {
+    const helper = new ItecHelper({ apiKey: 'key', baseUrl: 'https://itec.test' });
+    const api = (helper as unknown as { api: { post: ReturnType<typeof vi.fn> } }).api;
+    vi.spyOn(api, 'post').mockResolvedValue({ data: { status: 400, data: { message: 'Insufficient balance' } } });
+
+    const error = await helper.requestCashout({ amount: 500, phone: '250788123456' }).catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(ItecError);
+    expect(error).toMatchObject({
+      message: 'ITEC rejected the payout: Insufficient balance',
+      statusCode: 400,
+      outcomeUnknown: false,
     });
   });
 });

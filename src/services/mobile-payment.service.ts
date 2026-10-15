@@ -189,8 +189,11 @@ export class MobilePaymentService {
       }
     } catch (err) {
       await this.recordCashoutFailure(reservation.payment, err, provider);
+      if (err instanceof ItecError) {
+        // 422: ITEC definitively refused (nothing sent). 502: no definitive answer (funds may have moved)
+        throw new HttpError(err.outcomeUnknown ? 502 : 422, err.message);
+      }
       if (err instanceof PaypackError) throw err;
-      if (err instanceof ItecError) throw err;
       throw new Error(this.extractErrorMessage(err, `${provider} cashout failed`));
     }
 

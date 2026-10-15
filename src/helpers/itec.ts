@@ -228,12 +228,9 @@ export class ItecHelper {
     }
 
     if (response.data.status !== 200) {
-      const errorMsg = (response.data as unknown as Record<string, unknown>)?.message as string | undefined;
-      const details = errorMsg ? `: ${errorMsg}` : '';
-      throw new ItecError(
-        `Cashout request rejected${details} | ITEC: ${JSON.stringify(response.data)}`,
-        response.data.status || 502,
-      );
+      console.log('[ITEC Cashout Rejected]', { provider, response: response.data });
+      const reason = this.extractItecMessage(response.data) ?? `status ${response.data.status}`;
+      throw new ItecError(`ITEC rejected the payout: ${reason}`, response.data.status || 502);
     }
 
     if (!response.data.data?.transaction_id) {
@@ -366,6 +363,20 @@ export class ItecHelper {
     }
 
     return '250' + cleaned;
+  }
+
+  /**
+   * ITEC returns its reason either at the top level ({ message }) or nested ({ data: { message } })
+   */
+  private extractItecMessage(body: unknown): string | undefined {
+    if (!body || typeof body !== 'object') return undefined;
+    const record = body as Record<string, unknown>;
+    if (typeof record.message === 'string') return record.message;
+    const data = record.data;
+    if (data && typeof data === 'object' && typeof (data as Record<string, unknown>).message === 'string') {
+      return (data as Record<string, unknown>).message as string;
+    }
+    return undefined;
   }
 
   private getErrorMessage(error: unknown): string {
