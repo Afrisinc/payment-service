@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { AxiosInstance } from 'axios';
+import { AxiosInstance, isAxiosError } from 'axios';
 import requestHelper from '../utils/requestHelper.js';
 import { removeCountryCode } from '../utils/phone.js';
 import type {
@@ -11,6 +11,7 @@ import type {
   ItecCashoutResponse,
   ItecReportRequest,
   ItecReportResponse,
+  ItecReportEntry,
   ItecV1PaymentRequest,
   ItecV1PaymentResponse,
   ItecCardPaymentRequest,
@@ -18,10 +19,24 @@ import type {
 } from '../types/index.js';
 import { env } from '../config/env.js';
 
+/** Timeout for disbursement requests; without it a hung ITEC call would block the request indefinitely */
+const TRANSFER_TIMEOUT_MS = 30_000;
+
+/** ITEC report timestamps are expressed in Rwanda local time (CAT, UTC+2, no DST) */
+const RWANDA_UTC_OFFSET_MS = 2 * 60 * 60 * 1000;
+
+/** Margin added on both sides of the report window to absorb clock and timezone drift */
+const REPORT_WINDOW_MARGIN_MS = 24 * 60 * 60 * 1000;
+
 export class ItecError extends Error {
+  /**
+   * @param outcomeUnknown true when ITEC may have processed the request even though we got no
+   *   definitive answer (timeout, network failure, 5xx). Callers must not assume nothing happened.
+   */
   constructor(
     message: string,
     public readonly statusCode: number = 500,
+    public readonly outcomeUnknown: boolean = false,
   ) {
     super(message);
     this.name = 'ItecError';
@@ -174,38 +189,88 @@ export class ItecHelper {
     }
   }
 
+  /**
+   * Disburse funds to a mobile money wallet via ITEC transfer API.
+   * The transfer endpoint has no idempotency key, so callers must guarantee a single call per payout.
+   * Throws ItecError with outcomeUnknown=true when the transfer may have gone through without a definitive response.
+   */
   async requestCashout(params: ItecCashoutRequest): Promise<ItecCashoutResponse> {
+    const normalizedPhone = this.normalizePhone(params.phone);
+    const provider = this.detectProviderFromPhone(normalizedPhone);
+
+    const payload = {
+      amount: params.amount,
+      phone: removeCountryCode(normalizedPhone),
+      key: this.getApiKeyForMethod(provider),
+    };
+
+    console.log('[ITEC Cashout Request]', {
+      provider,
+      normalizedPhone,
+      endpoint: `${this.baseUrl}/api/transfer`,
+      payload: { ...payload, key: '***REDACTED***' },
+    });
+
+    let response;
     try {
-      const normalizedPhone = this.normalizePhone(params.phone);
-
-      // Auto-detect provider from phone number for cashout
-      const provider = this.detectProviderFromPhone(normalizedPhone);
-
-      const payload = {
-        amount: params.amount,
-        phone: removeCountryCode(params.phone),
-        key: this.getApiKeyForMethod(provider),
-      };
-
-      console.log('[ITEC Cashout Request]', {
-        provider,
-        normalizedPhone,
-        phoneAfterRemoval: removeCountryCode(params.phone),
-        endpoint: `${this.baseUrl}/api/transfer`,
-        payload: { ...payload, key: '***REDACTED***' },
+      response = await this.api.post<ItecCashoutResponse>(`${this.baseUrl}/api/transfer`, payload, {
+        timeout: TRANSFER_TIMEOUT_MS,
       });
-
-      const response = await this.api.post<ItecCashoutResponse>(`${this.baseUrl}/api/transfer`, payload);
-
-      if (response.data.status !== 200) {
-        throw new ItecError('Cashout request failed', response.data.status);
-      }
-
-      return response.data;
     } catch (error) {
-      if (error instanceof ItecError) throw error;
-      throw new ItecError(`Cashout request failed: ${this.getErrorMessage(error)}`, 500);
+      const httpStatus = isAxiosError(error) ? error.response?.status : undefined;
+      // No response or a server-side failure: ITEC may still have executed the transfer
+      const outcomeUnknown = httpStatus === undefined || httpStatus >= 500;
+      throw new ItecError(
+        `Cashout request failed: ${this.getErrorMessage(error)}`,
+        outcomeUnknown ? 502 : httpStatus,
+        outcomeUnknown,
+      );
     }
+
+    if (response.data.status !== 200) {
+      const errorMsg = (response.data as unknown as Record<string, unknown>)?.message as string | undefined;
+      const details = errorMsg ? `: ${errorMsg}` : '';
+      throw new ItecError(
+        `Cashout request rejected${details} | ITEC: ${JSON.stringify(response.data)}`,
+        response.data.status || 502,
+      );
+    }
+
+    if (!response.data.data?.transaction_id) {
+      // Accepted by ITEC but untraceable: the funds may have moved
+      throw new ItecError(
+        `Cashout accepted without transaction_id | ITEC: ${JSON.stringify(response.data)}`,
+        502,
+        true,
+      );
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Look up a transfer (cashout) in the ITEC transfers report.
+   * The transfer API returns no req_ref, so /api2/verify cannot be used for disbursements.
+   * @param transactionId transaction_id returned by requestCashout
+   * @param initiatedAt when the transfer was initiated, used to bound the report window
+   * @returns the report entry, or null if ITEC has not reported the transfer yet
+   */
+  async findTransfer(transactionId: string, initiatedAt: Date): Promise<ItecReportEntry | null> {
+    const report = await this.getReport({
+      report: 'transfers',
+      start: this.toReportTimestamp(new Date(initiatedAt.getTime() - REPORT_WINDOW_MARGIN_MS)),
+      end: this.toReportTimestamp(new Date(Date.now() + REPORT_WINDOW_MARGIN_MS)),
+    });
+
+    return (report.data ?? []).find((entry) => entry.transaction_id === transactionId) ?? null;
+  }
+
+  /**
+   * Format a date as ITEC report timestamp (YYYYMMDDHHmmss, Rwanda local time)
+   */
+  private toReportTimestamp(date: Date): number {
+    const iso = new Date(date.getTime() + RWANDA_UTC_OFFSET_MS).toISOString(); // 2025-01-10T15:30:45.000Z
+    return Number(iso.slice(0, 19).replace(/\D/g, ''));
   }
 
   async getReport(params: ItecReportRequest): Promise<ItecReportResponse> {

@@ -108,6 +108,9 @@ async function checkMobilePaymentStatus(payment: any): Promise<{ checked: number
         mobilePaymentService.getTransactionStatus(payment.ref, {
           provider: payment.provider,
           metadata: payment.metadata as Record<string, unknown>,
+          type: payment.type,
+          status: payment.status,
+          createdAt: payment.createdAt,
         }),
       3,
       `Mobile payment status check: ${payment.id}`,
@@ -391,19 +394,20 @@ async function checkStalePayments(): Promise<void> {
 
 /**
  * Parse retry metadata from payment JSON
+ * Preserves existing fields (merchant metadata, req_ref, payment_type) - they are written back with the retry data
  */
 function parseRetryMetadata(metadata: unknown): RetryMetadata {
-  if (!metadata || typeof metadata !== 'object') {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
     return initializeRetryMetadata();
   }
 
   const meta = metadata as Record<string, unknown>;
 
-  if (meta.retry_count && typeof meta.retry_count === 'number') {
+  if (typeof meta.retry_count === 'number' && Array.isArray(meta.status_checks)) {
     return meta as any;
   }
 
-  return initializeRetryMetadata();
+  return { ...meta, ...initializeRetryMetadata() } as RetryMetadata;
 }
 
 /**

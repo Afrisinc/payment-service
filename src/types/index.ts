@@ -81,6 +81,7 @@ export type {
   ItecCashoutResponse,
   ItecReportRequest,
   ItecReportResponse,
+  ItecReportEntry,
   ItecCallbackPayload,
   ItecV1PaymentRequest,
   ItecV1PaymentResponse,

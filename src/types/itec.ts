@@ -59,14 +59,16 @@ export interface ItecReportRequest {
   end: number;
 }
 
+export interface ItecReportEntry {
+  transaction_id: string;
+  amount: string;
+  status: string;
+  timestamp: string;
+}
+
 export interface ItecReportResponse {
   status: number;
-  data: Array<{
-    transaction_id: string;
-    amount: string;
-    status: string;
-    timestamp: string;
-  }>;
+  data: ItecReportEntry[];
 }
 
 export interface ItecCallbackPayload {

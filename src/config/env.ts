@@ -30,6 +30,12 @@ const envSchema = z.object({
   API_BASE_URL: z.string().url().optional(),
   WEBHOOK_URL: z.string().url().optional(),
 
+  // Admin dashboard payouts move real funds: keep disabled until admin authentication is enforced
+  ADMIN_PAYOUTS_ENABLED: z
+    .string()
+    .transform((val) => val === 'true')
+    .default('false'),
+
   ENABLE_SWAGGER: z
     .string()
     .transform((val) => val === 'true')

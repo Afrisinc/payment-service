@@ -7,7 +7,12 @@ import {
   dashboardMetricsSchema,
   dashboardChartDataSchema,
   listWebhookDeliveriesSchema,
+  getWebhookDeliverySchema,
+  retryWebhookDeliverySchema,
   refreshPaymentStatusSchema,
+  merchantBalanceSchema,
+  createMerchantPayoutSchema,
+  listAdminMobilePaymentsSchema,
 } from '../schemas/index.js';
 
 export function adminRoutes(fastify: FastifyInstance, _opts: unknown, done: () => void): void {
@@ -76,15 +81,45 @@ export function adminRoutes(fastify: FastifyInstance, _opts: unknown, done: () =
   fastify.get(
     '/webhooks/:id',
     {
+      schema: getWebhookDeliverySchema,
       preHandler: [fastify.authenticateAdmin],
     },
     asyncWrapper(adminController.getWebhookDelivery.bind(adminController)),
+  );
+
+  fastify.post(
+    '/webhooks/:id/retry',
+    {
+      schema: retryWebhookDeliverySchema,
+      preHandler: [fastify.authenticateAdmin],
+    },
+    asyncWrapper(adminController.retryWebhookDelivery.bind(adminController)),
+  );
+
+  // Merchant balance & payouts
+  fastify.get(
+    '/merchants/:id/balance',
+    {
+      schema: merchantBalanceSchema,
+      preHandler: [fastify.authenticateAdmin],
+    },
+    asyncWrapper(adminController.getMerchantBalance.bind(adminController)),
+  );
+
+  fastify.post(
+    '/merchants/:id/payouts',
+    {
+      schema: createMerchantPayoutSchema,
+      preHandler: [fastify.authenticateAdmin],
+    },
+    asyncWrapper(adminController.createMerchantPayout.bind(adminController)),
   );
 
   // Mobile payment admin endpoints
   fastify.get(
     '/mobile-payments',
     {
+      schema: listAdminMobilePaymentsSchema,
       preHandler: [fastify.authenticateAdmin],
     },
     asyncWrapper(adminController.listMobilePayments.bind(adminController)),
